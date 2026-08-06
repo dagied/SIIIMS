@@ -3,14 +3,14 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { FileText, Download, BarChart2, CheckCircle, Clock, ShieldAlert } from 'lucide-react';
 
-export const ReportingDashboard: React.FC = () => {
+export const ReportingDashboard = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
 
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
 
-  const simulateDownload = (type: 'PDF' | 'Excel') => {
+  const simulateDownload = (type) => {
     if (type === 'PDF') {
       setIsExportingPdf(true);
       setTimeout(() => {

@@ -3,29 +3,15 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Plus, Search, Tag, MessageSquare, AlertTriangle, UserCheck, X } from 'lucide-react';
 
-interface Ticket {
-  id: string;
-  subject: string;
-  category: string;
-  priority: 'Critical' | 'High' | 'Medium' | 'Low';
-  status: 'Open' | 'In Progress' | 'Escalated' | 'Resolved' | 'Closed';
-  assignedTo: string;
-  createdBy: string;
-  date: string;
-  description: string;
-  assetTag?: string;
-  timeline: Array<{ date: string; action: string; user: string }>;
-}
-
-export const HelpdeskTicketing: React.FC = () => {
+export const HelpdeskTicketing = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
 
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [activeForm, setActiveForm] = useState<'submit' | 'escalate' | 'view' | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [activeForm, setActiveForm] = useState(null);
 
   // Mock list of helpdesk tickets
-  const [tickets, setTickets] = useState<Ticket[]>([
+  const [tickets, setTickets] = useState([
     {
       id: 'tkt-401',
       subject: 'Unable to connect to OSTA Core ERP System',
@@ -85,7 +71,7 @@ export const HelpdeskTicketing: React.FC = () => {
   const [newTicket, setNewTicket] = useState({
     subject: '',
     category: 'Software / Access',
-    priority: 'Medium' as Ticket['priority'],
+    priority: 'Medium',
     description: '',
     assetTag: ''
   });
@@ -93,7 +79,7 @@ export const HelpdeskTicketing: React.FC = () => {
   const [escTarget, setEscTarget] = useState({
     technician: '',
     escalationReason: '',
-    status: 'In Progress' as Ticket['status']
+    status: 'In Progress'
   });
 
   const filteredTickets = tickets.filter(ticket => {
@@ -114,14 +100,14 @@ export const HelpdeskTicketing: React.FC = () => {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  const handleSubmitTicket = (e: React.FormEvent) => {
+  const handleSubmitTicket = (e) => {
     e.preventDefault();
     if (!newTicket.subject || !newTicket.description) return;
 
     const today = new Date().toISOString().split('T')[0];
     const time = new Date().toLocaleTimeString().substring(0, 5);
 
-    const ticketEntry: Ticket = {
+    const ticketEntry = {
       id: `tkt-${tickets.length + 401}`,
       subject: newTicket.subject,
       category: newTicket.category,
@@ -142,7 +128,7 @@ export const HelpdeskTicketing: React.FC = () => {
     setNewTicket({ subject: '', category: 'Software / Access', priority: 'Medium', description: '', assetTag: '' });
   };
 
-  const handleEscalateSubmit = (e: React.FormEvent) => {
+  const handleEscalateSubmit = (e) => {
     e.preventDefault();
     if (!selectedTicket || !escTarget.technician) return;
 
@@ -174,7 +160,7 @@ export const HelpdeskTicketing: React.FC = () => {
     setEscTarget({ technician: '', escalationReason: '', status: 'In Progress' });
   };
 
-  const handleMarkResolved = (ticket: Ticket) => {
+  const handleMarkResolved = (ticket) => {
     const today = new Date().toISOString().split('T')[0];
     const time = new Date().toLocaleTimeString().substring(0, 5);
 
@@ -182,7 +168,7 @@ export const HelpdeskTicketing: React.FC = () => {
       if (tkt.id === ticket.id) {
         return {
           ...tkt,
-          status: 'Resolved' as const,
+          status: 'Resolved',
           timeline: [
             ...tkt.timeline,
             { date: `${today} ${time}`, action: 'Ticket Resolved successfully', user: user?.username || 'system' }
@@ -363,7 +349,7 @@ export const HelpdeskTicketing: React.FC = () => {
         <div className="drawer-overlay" onClick={() => setActiveForm(null)}>
           <div className="drawer" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-header">
-              <h3>Support Ticket #{(selectedTicket.id.split('-')[1])}</h3>
+              <h3>Support Ticket #{selectedTicket.id.split('-')[1]}</h3>
               <button className="nav-btn" onClick={() => setActiveForm(null)} aria-label="Close drawer"><X size={18} /></button>
             </div>
             <div className="drawer-body">
@@ -480,7 +466,7 @@ export const HelpdeskTicketing: React.FC = () => {
                       id="tkt-prio"
                       className="input-field"
                       value={newTicket.priority}
-                      onChange={(e) => setNewTicket(prev => ({ ...prev, priority: e.target.value as any }))}
+                      onChange={(e) => setNewTicket(prev => ({ ...prev, priority: e.target.value }))}
                     >
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
@@ -560,7 +546,7 @@ export const HelpdeskTicketing: React.FC = () => {
                     id="esc-status"
                     className="input-field"
                     value={escTarget.status}
-                    onChange={(e) => setEscTarget(prev => ({ ...prev, status: e.target.value as any }))}
+                    onChange={(e) => setEscTarget(prev => ({ ...prev, status: e.target.value }))}
                   >
                     <option value="In Progress">In Progress</option>
                     <option value="Escalated">Escalated</option>

@@ -3,31 +3,16 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Plus, Wrench, CheckSquare, Calendar, Users, ShieldAlert, X } from 'lucide-react';
 
-interface MaintenanceTask {
-  id: string;
-  title: string;
-  assetTag: string;
-  assetName: string;
-  type: 'Preventive' | 'Corrective';
-  technician: string;
-  status: 'Pending' | 'Completed' | 'Overdue';
-  date: string;
-  checklist?: string[];
-  cost?: string;
-  remarks?: string;
-  durationHours?: number;
-}
-
-export const MaintenanceManagement: React.FC = () => {
+export const MaintenanceManagement = () => {
   const { user, canEdit } = useAuth();
   const { t } = useLanguage();
 
-  const [activeTab, setActiveTab] = useState<'Scheduled' | 'Corrective'>('Scheduled');
-  const [selectedTask, setSelectedTask] = useState<MaintenanceTask | null>(null);
-  const [activeForm, setActiveForm] = useState<'schedule' | 'corrective_log' | 'view' | null>(null);
+  const [activeTab, setActiveTab] = useState('Scheduled');
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [activeForm, setActiveForm] = useState(null);
 
   // Mock list of maintenance logs
-  const [maintenanceList, setMaintenanceList] = useState<MaintenanceTask[]>([
+  const [maintenanceList, setMaintenanceList] = useState([
     {
       id: 'maint-1',
       title: 'Quarterly Server Dust Cleaning & Backup Test',
@@ -109,11 +94,11 @@ export const MaintenanceManagement: React.FC = () => {
   const scheduledTasks = maintenanceList.filter(item => item.type === 'Preventive');
   const correctiveLogs = maintenanceList.filter(item => item.type === 'Corrective');
 
-  const handleScheduleSubmit = (e: React.FormEvent) => {
+  const handleScheduleSubmit = (e) => {
     e.preventDefault();
     if (!schedForm.title || !schedForm.date) return;
 
-    const newTask: MaintenanceTask = {
+    const newTask = {
       id: `maint-${maintenanceList.length + 1}`,
       title: schedForm.title,
       assetTag: schedForm.assetTag || 'N/A',
@@ -131,11 +116,11 @@ export const MaintenanceManagement: React.FC = () => {
     setSchedForm({ title: '', assetTag: '', assetName: '', technician: '', date: '', checklistText: '', remarks: '' });
   };
 
-  const handleCorrectiveSubmit = (e: React.FormEvent) => {
+  const handleCorrectiveSubmit = (e) => {
     e.preventDefault();
     if (!corrForm.title || !corrForm.date) return;
 
-    const newLog: MaintenanceTask = {
+    const newLog = {
       id: `maint-${maintenanceList.length + 1}`,
       title: corrForm.title,
       assetTag: corrForm.assetTag || 'N/A',
@@ -154,13 +139,13 @@ export const MaintenanceManagement: React.FC = () => {
     setCorrForm({ title: '', assetTag: '', assetName: '', technician: '', date: '', durationHours: 1, cost: '', remarks: '' });
   };
 
-  const handleMarkCompleted = (task: MaintenanceTask) => {
+  const handleMarkCompleted = (task) => {
     const today = new Date().toISOString().split('T')[0];
     const updated = maintenanceList.map(item => {
       if (item.id === task.id) {
         return {
           ...item,
-          status: 'Completed' as const,
+          status: 'Completed',
           date: today,
           remarks: item.remarks ? `${item.remarks} (Marked completed on ${today})` : `Completed on ${today}`
         };

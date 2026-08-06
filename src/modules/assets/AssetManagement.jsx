@@ -3,27 +3,12 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Plus, Search, ArrowLeftRight, Trash2, Eye, X } from 'lucide-react';
 
-interface Asset {
-  id: string;
-  tag: string;
-  name: string;
-  serial: string;
-  category: string;
-  status: 'Active' | 'Transferred' | 'Disposed';
-  location: string;
-  owner: string;
-  model: string;
-  purchaseDate: string;
-  price: string;
-  history: Array<{ date: string; action: string; user: string; notes: string }>;
-}
-
-export const AssetManagement: React.FC = () => {
+export const AssetManagement = () => {
   const { user, canEdit } = useAuth();
   const { t } = useLanguage();
 
   // Mock initial assets list
-  const [assets, setAssets] = useState<Asset[]>([
+  const [assets, setAssets] = useState([
     {
       id: 'ast-1',
       tag: 'OSTA-2026-001',
@@ -118,8 +103,8 @@ export const AssetManagement: React.FC = () => {
   const itemsPerPage = 3;
 
   // Selected asset for view or action drawers
-  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
-  const [activeForm, setActiveForm] = useState<'register' | 'transfer' | 'dispose' | 'view' | null>(null);
+  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [activeForm, setActiveForm] = useState(null);
 
   // New Asset input form state
   const [newAsset, setNewAsset] = useState({
@@ -162,7 +147,7 @@ export const AssetManagement: React.FC = () => {
     currentPage * itemsPerPage
   );
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = (e) => {
     e.preventDefault();
     if (!newAsset.name || !newAsset.serial) return;
 
@@ -170,7 +155,7 @@ export const AssetManagement: React.FC = () => {
     const newTag = `OSTA-2026-0${assets.length + 1}`;
     const today = new Date().toISOString().split('T')[0];
 
-    const assetEntry: Asset = {
+    const assetEntry = {
       id: newId,
       tag: newTag,
       name: newAsset.name,
@@ -193,7 +178,7 @@ export const AssetManagement: React.FC = () => {
     setNewAsset({ name: '', serial: '', category: 'Computers', location: '', owner: '', model: '', price: '' });
   };
 
-  const handleTransferSubmit = (e: React.FormEvent) => {
+  const handleTransferSubmit = (e) => {
     e.preventDefault();
     if (!selectedAsset || !transferTarget.location) return;
 
@@ -204,7 +189,7 @@ export const AssetManagement: React.FC = () => {
           ...asset,
           location: transferTarget.location,
           owner: transferTarget.owner || asset.owner,
-          status: 'Transferred' as const,
+          status: 'Transferred',
           history: [
             ...asset.history,
             {
@@ -225,7 +210,7 @@ export const AssetManagement: React.FC = () => {
     setTransferTarget({ location: '', owner: '', notes: '' });
   };
 
-  const handleDisposeSubmit = (e: React.FormEvent) => {
+  const handleDisposeSubmit = (e) => {
     e.preventDefault();
     if (!selectedAsset || !disposeReason.reason) return;
 
@@ -234,7 +219,7 @@ export const AssetManagement: React.FC = () => {
       if (asset.id === selectedAsset.id) {
         return {
           ...asset,
-          status: 'Disposed' as const,
+          status: 'Disposed',
           history: [
             ...asset.history,
             {

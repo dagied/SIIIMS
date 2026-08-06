@@ -1,27 +1,17 @@
 import React, { useState } from 'react';
-import { useAuth, type UserRole } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Plus, Search, X } from 'lucide-react';
 
-interface ManageUser {
-  id: string;
-  name: string;
-  username: string;
-  email: string;
-  role: UserRole;
-  zone?: string;
-  status: 'Active' | 'Suspended';
-}
-
-export const UserManagement: React.FC = () => {
+export const UserManagement = () => {
   const { canEdit } = useAuth();
   const { t } = useLanguage();
 
-  const [selectedUser, setSelectedUser] = useState<ManageUser | null>(null);
-  const [activeForm, setActiveForm] = useState<'register' | 'edit' | 'view' | null>(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [activeForm, setActiveForm] = useState(null);
 
   // Mock list of users
-  const [usersList, setUsersList] = useState<ManageUser[]>([
+  const [usersList, setUsersList] = useState([
     {
       id: 'usr-1',
       name: 'Almaz Tolosa',
@@ -77,7 +67,7 @@ export const UserManagement: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState('');
 
   // Form input states
-  const [formState, setFormState] = useState<Omit<ManageUser, 'id'>>({
+  const [formState, setFormState] = useState({
     name: '',
     username: '',
     email: '',
@@ -110,7 +100,7 @@ export const UserManagement: React.FC = () => {
     setActiveForm('register');
   };
 
-  const handleEditClick = (u: ManageUser) => {
+  const handleEditClick = (u) => {
     setSelectedUser(u);
     setFormState({
       name: u.name,
@@ -123,12 +113,12 @@ export const UserManagement: React.FC = () => {
     setActiveForm('edit');
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = (e) => {
     e.preventDefault();
     if (!formState.name || !formState.username) return;
 
     if (activeForm === 'register') {
-      const newUser: ManageUser = {
+      const newUser = {
         id: `usr-${usersList.length + 1}`,
         ...formState,
         zone: formState.role === 'Zonal ICT Focal Person' ? formState.zone : undefined
@@ -146,7 +136,7 @@ export const UserManagement: React.FC = () => {
     setSelectedUser(null);
   };
 
-  const toggleStatus = (targetUser: ManageUser) => {
+  const toggleStatus = (targetUser) => {
     setUsersList(prev => prev.map(u => {
       if (u.id === targetUser.id) {
         return {
@@ -159,7 +149,7 @@ export const UserManagement: React.FC = () => {
   };
 
   const isWriteAllowed = canEdit('users');
-  const roleList: UserRole[] = [
+  const roleList = [
     'System Admin',
     'ICT Technician',
     'Zonal ICT Focal Person',
@@ -339,7 +329,7 @@ export const UserManagement: React.FC = () => {
                     id="usr-form-role"
                     className="input-field"
                     value={formState.role}
-                    onChange={(e) => setFormState(prev => ({ ...prev, role: e.target.value as UserRole }))}
+                    onChange={(e) => setFormState(prev => ({ ...prev, role: e.target.value }))}
                   >
                     {roleList.map(roleOption => (
                       <option key={roleOption} value={roleOption}>{roleOption}</option>
@@ -373,7 +363,7 @@ export const UserManagement: React.FC = () => {
                     id="usr-form-status"
                     className="input-field"
                     value={formState.status}
-                    onChange={(e) => setFormState(prev => ({ ...prev, status: e.target.value as any }))}
+                    onChange={(e) => setFormState(prev => ({ ...prev, status: e.target.value }))}
                   >
                     <option value="Active">Active / Approved</option>
                     <option value="Suspended">Suspended / Deactivated</option>

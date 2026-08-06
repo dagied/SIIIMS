@@ -17,12 +17,7 @@ import {
   X
 } from 'lucide-react';
 
-interface SidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+export const Sidebar = ({ isOpen, onClose }) => {
   const { user, logout, hasAccess } = useAuth();
   const { t } = useLanguage();
 
@@ -45,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const allowedItems = menuItems.filter(item => hasAccess(item.id));
 
   // Get initials for avatar
-  const getInitials = (name: string) => {
+  const getInitials = (name) => {
     return name
       .split(' ')
       .map(n => n[0])

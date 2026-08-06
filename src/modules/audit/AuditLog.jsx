@@ -3,17 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Search, ShieldAlert, Calendar, Filter } from 'lucide-react';
 
-interface AuditEntry {
-  id: string;
-  timestamp: string;
-  user: string;
-  action: string;
-  module: string;
-  ipAddress: string;
-  severity: 'Info' | 'Warning' | 'Critical';
-}
-
-export const AuditLog: React.FC = () => {
+export const AuditLog = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
 
@@ -22,7 +12,7 @@ export const AuditLog: React.FC = () => {
   const [severityFilter, setSeverityFilter] = useState('');
 
   // Mock list of global audit trail logs
-  const [audits] = useState<AuditEntry[]>([
+  const [audits] = useState([
     {
       id: 'aud-1',
       timestamp: '2026-07-28 15:30:12',

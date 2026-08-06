@@ -3,26 +3,12 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Plus, Search, ExternalLink, Globe, Database, Cpu, UserCheck, X } from 'lucide-react';
 
-interface SoftSystem {
-  id: string;
-  name: string;
-  owner: string;
-  hosting: 'On-Premise' | 'Cloud' | 'Hybrid';
-  status: 'Operational' | 'Maintenance' | 'Down';
-  url: string;
-  description: string;
-  techStack: string;
-  dbType: string;
-  securityLevel: string;
-  adminName: string;
-}
-
-export const SystemsRegistry: React.FC = () => {
+export const SystemsRegistry = () => {
   const { user, canEdit } = useAuth();
   const { t } = useLanguage();
 
   // Mock list of applications
-  const [systems, setSystems] = useState<SoftSystem[]>([
+  const [systems, setSystems] = useState([
     {
       id: 'sys-1',
       name: 'OSTA Core ERP System',
@@ -80,11 +66,11 @@ export const SystemsRegistry: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [hostingFilter, setHostingFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [selectedSystem, setSelectedSystem] = useState<SoftSystem | null>(null);
-  const [activeForm, setActiveForm] = useState<'register' | 'edit' | 'view' | null>(null);
+  const [selectedSystem, setSelectedSystem] = useState(null);
+  const [activeForm, setActiveForm] = useState(null);
 
   // Form input states
-  const [formState, setFormState] = useState<Omit<SoftSystem, 'id'>>({
+  const [formState, setFormState] = useState({
     name: '',
     owner: '',
     hosting: 'On-Premise',
@@ -126,7 +112,7 @@ export const SystemsRegistry: React.FC = () => {
     setActiveForm('register');
   };
 
-  const handleEditClick = (sys: SoftSystem) => {
+  const handleEditClick = (sys) => {
     setSelectedSystem(sys);
     setFormState({
       name: sys.name,
@@ -143,12 +129,12 @@ export const SystemsRegistry: React.FC = () => {
     setActiveForm('edit');
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = (e) => {
     e.preventDefault();
     if (!formState.name || !formState.owner) return;
 
     if (activeForm === 'register') {
-      const newSys: SoftSystem = {
+      const newSys = {
         id: `sys-${systems.length + 1}`,
         ...formState
       };
@@ -405,7 +391,7 @@ export const SystemsRegistry: React.FC = () => {
                       id="sys-hosting"
                       className="input-field"
                       value={formState.hosting}
-                      onChange={(e) => setFormState(prev => ({ ...prev, hosting: e.target.value as any }))}
+                      onChange={(e) => setFormState(prev => ({ ...prev, hosting: e.target.value }))}
                     >
                       <option value="On-Premise">On-Premise</option>
                       <option value="Cloud">Cloud</option>
@@ -418,7 +404,7 @@ export const SystemsRegistry: React.FC = () => {
                       id="sys-status"
                       className="input-field"
                       value={formState.status}
-                      onChange={(e) => setFormState(prev => ({ ...prev, status: e.target.value as any }))}
+                      onChange={(e) => setFormState(prev => ({ ...prev, status: e.target.value }))}
                     >
                       <option value="Operational">Operational</option>
                       <option value="Maintenance">Maintenance</option>

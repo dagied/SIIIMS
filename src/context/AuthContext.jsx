@@ -1,34 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type UserRole =
-  | 'System Admin'
-  | 'ICT Technician'
-  | 'Zonal ICT Focal Person'
-  | 'Department Staff/End User'
-  | 'Management/Executive Viewer';
-
-export interface User {
-  id: string;
-  name: string;
-  username: string;
-  email: string;
-  role: UserRole;
-  zone?: string;
-}
-
-interface AuthContextProps {
-  user: User | null;
-  login: (role: UserRole, username?: string) => Promise<boolean>;
-  logout: () => void;
-  isLoading: boolean;
-  hasAccess: (module: string) => boolean;
-  canEdit: (module: string) => boolean;
-}
-
-const AuthContext = createContext<AuthContextProps | undefined>(undefined);
+const AuthContext = createContext(undefined);
 
 // Mock Users for testing
-const MOCK_PROFILES: Record<UserRole, Omit<User, 'role'>> = {
+const MOCK_PROFILES = {
   'System Admin': { id: 'usr-001', name: 'Almaz Tolosa', username: 'admin_almaz', email: 'almaz.t@osta.gov.et' },
   'ICT Technician': { id: 'usr-002', name: 'Chala Gemechu', username: 'tech_chala', email: 'chala.g@osta.gov.et' },
   'Zonal ICT Focal Person': { id: 'usr-003', name: 'Lensa Kebede', username: 'zone_lensa', email: 'lensa.k@osta.gov.et', zone: 'East Shewa Zone' },
@@ -36,8 +11,8 @@ const MOCK_PROFILES: Record<UserRole, Omit<User, 'role'>> = {
   'Management/Executive Viewer': { id: 'usr-005', name: 'Dr. Kenenisa Bekele', username: 'exec_kenenisa', email: 'kenenisa.b@osta.gov.et' },
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -48,13 +23,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
-  const login = async (role: UserRole, username = ''): Promise<boolean> => {
+  const login = async (role, username = '') => {
     setIsLoading(true);
     // Simulate low-bandwidth network latency for premium real feel
     await new Promise((resolve) => setTimeout(resolve, 800));
     
     const profile = MOCK_PROFILES[role];
-    const loggedInUser: User = {
+    const loggedInUser = {
       id: profile.id,
       name: profile.name,
       username: username || profile.username,
@@ -75,7 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Centralized Module Access Policy Matrix
-  const hasAccess = (module: string): boolean => {
+  const hasAccess = (module) => {
     if (!user) return false;
     
     const role = user.role;
@@ -118,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Centralized Module Write/Edit Policy Matrix
-  const canEdit = (module: string): boolean => {
+  const canEdit = (module) => {
     if (!user) return false;
     
     const role = user.role;

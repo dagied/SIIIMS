@@ -3,27 +3,15 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { ShieldAlert, Search, Plus, Calendar, AlertTriangle, X } from 'lucide-react';
 
-interface Contract {
-  id: string;
-  name: string;
-  serialOrKey: string;
-  type: 'Software License' | 'Hardware Warranty';
-  expiryDate: string;
-  totalSeats?: number;
-  assignedSeats?: number;
-  vendorName: string;
-  remarks?: string;
-}
-
-export const LicenseWarranty: React.FC = () => {
+export const LicenseWarranty = () => {
   const { user, canEdit } = useAuth();
   const { t } = useLanguage();
 
-  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
-  const [activeForm, setActiveForm] = useState<'register' | 'view' | null>(null);
+  const [selectedContract, setSelectedContract] = useState(null);
+  const [activeForm, setActiveForm] = useState(null);
 
   // Mock list of licenses and warranties
-  const [contracts, setContracts] = useState<Contract[]>([
+  const [contracts, setContracts] = useState([
     {
       id: 'lic-1',
       name: 'Windows Server 2022 Core Licenses',
@@ -73,7 +61,7 @@ export const LicenseWarranty: React.FC = () => {
   const [newContract, setNewContract] = useState({
     name: '',
     serialOrKey: '',
-    type: 'Software License' as Contract['type'],
+    type: 'Software License',
     expiryDate: '',
     totalSeats: 1,
     assignedSeats: 0,
@@ -82,7 +70,7 @@ export const LicenseWarranty: React.FC = () => {
   });
 
   // Calculate days remaining helper
-  const getDaysRemaining = (expiryDateStr: string) => {
+  const getDaysRemaining = (expiryDateStr) => {
     const today = new Date();
     today.setHours(0,0,0,0);
     const expiry = new Date(expiryDateStr);
@@ -92,18 +80,18 @@ export const LicenseWarranty: React.FC = () => {
     return diffDays;
   };
 
-  const getAlertStatus = (days: number) => {
+  const getAlertStatus = (days) => {
     if (days < 0) return { label: 'Expired', class: 'badge-danger', style: { color: 'var(--status-danger)' } };
     if (days <= 15) return { label: 'Critical Alert', class: 'badge-danger', style: { color: 'var(--status-danger)' } };
     if (days <= 90) return { label: 'Warning', class: 'badge-warning', style: { color: 'var(--status-warning)' } };
     return { label: 'Active', class: 'badge-success', style: { color: 'var(--status-success)' } };
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = (e) => {
     e.preventDefault();
     if (!newContract.name || !newContract.expiryDate) return;
 
-    const entry: Contract = {
+    const entry = {
       id: `lic-${contracts.length + 1}`,
       name: newContract.name,
       serialOrKey: newContract.serialOrKey || 'N/A',
@@ -354,7 +342,7 @@ export const LicenseWarranty: React.FC = () => {
                       id="con-type"
                       className="input-field"
                       value={newContract.type}
-                      onChange={(e) => setNewContract(prev => ({ ...prev, type: e.target.value as any }))}
+                      onChange={(e) => setNewContract(prev => ({ ...prev, type: e.target.value }))}
                     >
                       <option value="Software License">Software License</option>
                       <option value="Hardware Warranty">Hardware Warranty</option>

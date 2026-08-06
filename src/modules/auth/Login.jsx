@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { useAuth, type UserRole } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { LogIn, HelpCircle } from 'lucide-react';
 
-export const Login: React.FC = () => {
+export const Login = () => {
   const { login, isLoading } = useAuth();
   const { t } = useLanguage();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('System Admin');
+  const [role, setRole] = useState('System Admin');
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -32,7 +32,7 @@ export const Login: React.FC = () => {
     }
   };
 
-  const handleQuickSelect = (selectedRole: UserRole) => {
+  const handleQuickSelect = (selectedRole) => {
     setRole(selectedRole);
     // Autofill mock credentials
     const cleanUsername = selectedRole.toLowerCase().replace(/[^a-z]/g, '_');
@@ -40,7 +40,7 @@ export const Login: React.FC = () => {
     setPassword('Password123');
   };
 
-  const roleList: UserRole[] = [
+  const roleList = [
     'System Admin',
     'ICT Technician',
     'Zonal ICT Focal Person',
@@ -96,7 +96,7 @@ export const Login: React.FC = () => {
               id="role-select"
               className="input-field"
               value={role}
-              onChange={(e) => setRole(e.target.value as UserRole)}
+              onChange={(e) => setRole(e.target.value)}
               disabled={isLoading}
             >
               {roleList.map((r) => (

@@ -1,23 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { translations, type TranslationDictionary } from '../translations';
+import { translations } from '../translations';
 
-export type LanguageCode = 'en' | 'om' | 'am';
+const LanguageContext = createContext(undefined);
 
-interface LanguageContextProps {
-  language: LanguageCode;
-  setLanguage: (lang: LanguageCode) => void;
-  t: (key: keyof TranslationDictionary['en']) => string;
-}
-
-const LanguageContext = createContext<LanguageContextProps | undefined>(undefined);
-
-export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<LanguageCode>(() => {
+export const LanguageProvider = ({ children }) => {
+  const [language, setLanguageState] = useState(() => {
     const saved = localStorage.getItem('siims_lang');
-    return (saved as LanguageCode) || 'en';
+    return saved || 'en';
   });
 
-  const setLanguage = (lang: LanguageCode) => {
+  const setLanguage = (lang) => {
     setLanguageState(lang);
     localStorage.setItem('siims_lang', lang);
     document.documentElement.lang = lang;
@@ -27,7 +19,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     document.documentElement.lang = language;
   }, [language]);
 
-  const t = (key: keyof TranslationDictionary['en']): string => {
+  const t = (key) => {
     const langDict = translations[language] || translations['en'];
     return langDict[key] || translations['en'][key] || String(key);
   };

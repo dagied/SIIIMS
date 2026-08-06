@@ -1,33 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useLanguage, type LanguageCode } from '../context/LanguageContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Menu, Sun, Moon, Bell, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-interface NavbarProps {
-  onMenuToggle: () => void;
-}
-
-export interface NotificationItem {
-  id: string;
-  title: string;
-  desc: string;
-  time: string;
-  unread: boolean;
-  link: string;
-}
-
-export const Navbar: React.FC<NavbarProps> = ({ onMenuToggle }) => {
+export const Navbar = ({ onMenuToggle }) => {
   const { user } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
 
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('siims_theme') as 'light' | 'dark') || 'light';
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('siims_theme') || 'light';
   });
 
   const [showNotiDropdown, setShowNotiDropdown] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
+  const [notifications, setNotifications] = useState([
     {
       id: 'n-1',
       title: 'Warranty Expiry Alert',
@@ -54,7 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onMenuToggle }) => {
     }
   ]);
 
-  const notiRef = useRef<HTMLDivElement>(null);
+  const notiRef = useRef(null);
 
   // Apply theme to document element
   useEffect(() => {
@@ -64,8 +51,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onMenuToggle }) => {
 
   // Click outside to close notification dropdown
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (notiRef.current && !notiRef.current.contains(e.target as Node)) {
+    const handleOutsideClick = (e) => {
+      if (notiRef.current && !notiRef.current.contains(e.target)) {
         setShowNotiDropdown(false);
       }
     };
@@ -77,15 +64,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onMenuToggle }) => {
     setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
   };
 
-  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setLanguage(e.target.value as LanguageCode);
+  const handleLanguageChange = (e) => {
+    setLanguage(e.target.value);
   };
 
   const markAllRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
   };
 
-  const handleNotiClick = (noti: NotificationItem) => {
+  const handleNotiClick = (noti) => {
     setNotifications(prev => prev.map(n => n.id === noti.id ? { ...n, unread: false } : n));
     setShowNotiDropdown(false);
     navigate(noti.link);

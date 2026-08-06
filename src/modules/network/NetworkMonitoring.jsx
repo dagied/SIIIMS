@@ -3,25 +3,12 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Search, Server, Shield, Network, RefreshCw, X, Radio, AlertTriangle } from 'lucide-react';
 
-interface Device {
-  id: string;
-  name: string;
-  ip: string;
-  mac: string;
-  type: 'Switch' | 'Router' | 'Server' | 'Access Point';
-  status: 'Online' | 'Offline' | 'Degraded';
-  location: string;
-  latency: number;
-  uptime: string;
-  ports: Array<{ port: number; status: 'active' | 'inactive' | 'disabled' }>;
-}
-
-export const NetworkMonitoring: React.FC = () => {
+export const NetworkMonitoring = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
 
   // Mock list of network devices
-  const [devices, setDevices] = useState<Device[]>([
+  const [devices, setDevices] = useState([
     {
       id: 'net-1',
       name: 'OSTA HQ Core Switch',
@@ -118,7 +105,7 @@ export const NetworkMonitoring: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  const [selectedDevice, setSelectedDevice] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Simulate network status refresh
@@ -355,28 +342,28 @@ export const NetworkMonitoring: React.FC = () => {
                     }}>
                       {selectedDevice.ports.map((port) => (
                         <div 
-                          key={port.port} 
-                          style={{
-                            aspectRatio: '1',
-                            borderRadius: '4px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '0.65rem',
-                            fontWeight: 600,
-                            backgroundColor: 
-                              port.status === 'active' ? 'var(--status-success-bg)' :
-                              port.status === 'disabled' ? 'var(--status-danger-bg)' : 'var(--bg-surface)',
-                            border: `1px solid ${
-                              port.status === 'active' ? 'var(--status-success)' :
-                              port.status === 'disabled' ? 'var(--status-danger)' : 'var(--border-color)'
-                            }`,
-                            color: 
-                              port.status === 'active' ? 'var(--status-success)' :
-                              port.status === 'disabled' ? 'var(--status-danger)' : 'var(--text-secondary)'
-                          }}
-                          title={`Port ${port.port}: ${port.status.toUpperCase()}`}
+                           key={port.port} 
+                           style={{
+                             aspectRatio: '1',
+                             borderRadius: '4px',
+                             display: 'flex',
+                             flexDirection: 'column',
+                             alignItems: 'center',
+                             justifyContent: 'center',
+                             fontSize: '0.65rem',
+                             fontWeight: 600,
+                             backgroundColor: 
+                               port.status === 'active' ? 'var(--status-success-bg)' :
+                               port.status === 'disabled' ? 'var(--status-danger-bg)' : 'var(--bg-surface)',
+                             border: `1px solid ${
+                               port.status === 'active' ? 'var(--status-success)' :
+                               port.status === 'disabled' ? 'var(--status-danger)' : 'var(--border-color)'
+                             }`,
+                             color: 
+                               port.status === 'active' ? 'var(--status-success)' :
+                               port.status === 'disabled' ? 'var(--status-danger)' : 'var(--text-secondary)'
+                           }}
+                           title={`Port ${port.port}: ${port.status.toUpperCase()}`}
                         >
                           {port.port}
                         </div>

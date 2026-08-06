@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-export const Dashboard: React.FC = () => {
+export const Dashboard = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
 

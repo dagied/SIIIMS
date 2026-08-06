@@ -18,7 +18,7 @@ import { AuditLog } from './modules/audit/AuditLog';
 import './App.css';
 
 // App content wrapper that listens to Auth state
-const AppContent: React.FC = () => {
+const AppContent = () => {
   const { user, isLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
