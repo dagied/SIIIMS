@@ -14,6 +14,7 @@ import vendorRoutes from './routes/vendorRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
 import systemRoutes from './routes/systemRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
 
 dotenv.config();
 
@@ -49,6 +50,7 @@ app.use('/api/vendors', vendorRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/audit-logs', auditRoutes);
 app.use('/api/systems', systemRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 
 // 404 Route Handler

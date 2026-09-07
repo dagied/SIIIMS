@@ -108,6 +108,52 @@ export const getProfile = async (req, res, next) => {
   }
 };
 
+export const updateProfile = async (req, res, next) => {
+  try {
+    const { name, email, currentPassword, newPassword } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Profile user not found.' });
+    }
+    if (!name?.trim() || !email?.trim()) {
+      return res.status(400).json({ success: false, message: 'Name and email are required.' });
+    }
+    if (newPassword && (!currentPassword || !(await bcrypt.compare(currentPassword, user.passwordHash)))) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect.' });
+    }
+    if (newPassword && newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 8 characters.' });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        name: name.trim(),
+        email: email.trim(),
+        ...(newPassword ? { passwordHash: await bcrypt.hash(newPassword, 10) } : {})
+      },
+      select: { id: true, name: true, username: true, email: true, role: true, zone: true, department: true, status: true }
+    });
+
+    const token = jwt.sign({
+      id: updatedUser.id,
+      username: updatedUser.username,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      zone: updatedUser.zone
+    }, JWT_SECRET, { expiresIn: '24h' });
+
+    res.json({ success: true, message: 'Profile updated successfully.', token, user: updatedUser });
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({ success: false, message: 'That email address is already in use.' });
+    }
+    next(error);
+  }
+};
+
 export const getNotifications = async (req, res, next) => {
   try {
     const notifications = await prisma.notification.findMany({

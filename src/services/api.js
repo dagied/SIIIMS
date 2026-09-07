@@ -38,6 +38,8 @@ export const api = {
   // Auth
   login: (credentials) => request('/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
   getProfile: () => request('/auth/me'),
+  getDashboardSummary: () => request('/dashboard'),
+  updateProfile: (profile) => request('/auth/profile', { method: 'PUT', body: JSON.stringify(profile) }),
   getNotifications: () => request('/auth/notifications'),
   markNotificationRead: (id) => request(`/auth/notifications/${id}/read`, { method: 'PATCH' }),
   markAllNotificationsRead: () => request('/auth/notifications/read-all', { method: 'PATCH' }),
@@ -96,6 +98,7 @@ export const api = {
   createUser: (userData) => request('/users', { method: 'POST', body: JSON.stringify(userData) }),
   updateUser: (id, userData) => request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(userData) }),
   toggleUserStatus: (id) => request(`/users/${id}/status`, { method: 'PATCH' }),
+  deleteUser: (id) => request(`/users/${id}`, { method: 'DELETE' }),
   getAuditLogs: () => request('/audit-logs'),
   createAuditLog: (logData) => request('/audit-logs', { method: 'POST', body: JSON.stringify(logData) }),
 };

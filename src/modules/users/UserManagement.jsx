@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../services/api';
-import { Plus, Search, X, CheckCircle, Mail, Key, User } from 'lucide-react';
+import { Plus, Search, X, CheckCircle, Mail, Key, User, Trash2 } from 'lucide-react';
 
 export const UserManagement = () => {
   const { canEdit } = useAuth();
@@ -177,6 +177,24 @@ export const UserManagement = () => {
     }
   };
 
+  const deleteStaffMember = async (targetUser) => {
+    const confirmed = window.confirm(`Delete ${targetUser.name}'s account permanently? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      setErrorMsg(null);
+      const res = await api.deleteUser(targetUser.id);
+      if (res?.success) {
+        await fetchUsers();
+      } else {
+        setErrorMsg(res?.message || 'Failed to delete user.');
+      }
+    } catch (err) {
+      console.error('[UserManagement] Delete user error:', err);
+      setErrorMsg(err.message || 'Failed to delete user.');
+    }
+  };
+
 
   const isWriteAllowed = canEdit('users');
   const roleList = [
@@ -314,6 +332,15 @@ export const UserManagement = () => {
                               onClick={() => toggleStatus(u)}
                             >
                               {u.status === 'Active' ? 'Suspend' : 'Activate'}
+                            </button>
+                            <button
+                              className="btn btn-secondary"
+                              style={{ padding: '4px 8px', fontSize: '0.75rem', borderColor: 'var(--status-danger)', color: 'var(--status-danger)' }}
+                              onClick={() => deleteStaffMember(u)}
+                              title={`Delete ${u.name}`}
+                              aria-label={`Delete ${u.name}`}
+                            >
+                              <Trash2 size={14} />
                             </button>
                           </>
                         )}

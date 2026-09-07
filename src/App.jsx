@@ -16,6 +16,7 @@ import { VendorContract } from './modules/vendors/VendorContract';
 import { UserManagement } from './modules/users/UserManagement';
 import { AuditLog } from './modules/audit/AuditLog';
 import { Announcements } from './modules/announcements/Announcements';
+import { Profile } from './modules/profile/Profile';
 import './App.css';
 
 // App content wrapper that listens to Auth state
@@ -76,6 +77,7 @@ const AppContent = () => {
             <Route path="/users" element={<AccessRoute module="users"><UserManagement /></AccessRoute>} />
             <Route path="/audit-logs" element={<AccessRoute module="audit_logs"><AuditLog /></AccessRoute>} />
             <Route path="/announcements" element={<AccessRoute module="announcements"><Announcements /></AccessRoute>} />
+            <Route path="/profile" element={<AccessRoute module="profile"><Profile /></AccessRoute>} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

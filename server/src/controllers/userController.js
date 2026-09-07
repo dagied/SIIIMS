@@ -263,4 +263,47 @@ export const toggleUserStatus = async (req, res, next) => {
   }
 };
 
+export const deleteUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (id === req.user?.id) {
+      return res.status(400).json({ success: false, message: 'You cannot delete your own account.' });
+    }
+
+    const targetUser = await prisma.user.findUnique({ where: { id } });
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    if (targetUser.role === 'System Admin') {
+      const adminCount = await prisma.user.count({ where: { role: 'System Admin', status: 'Active' } });
+      if (adminCount <= 1) {
+        return res.status(400).json({ success: false, message: 'The last active System Admin cannot be deleted.' });
+      }
+    }
+
+    await prisma.user.delete({ where: { id } });
+
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user.id,
+          userRole: req.user.role,
+          action: 'DELETE_USER',
+          module: 'Users',
+          details: `Deleted user ${targetUser.name} (${targetUser.username})`
+        }
+      });
+    } catch (auditError) {
+      console.warn('[AuditLog] User deletion log failed:', auditError.message);
+    }
+
+    res.json({ success: true, message: `User ${targetUser.name} was deleted successfully.` });
+  } catch (error) {
+    console.error('[DeleteUser Error]:', error);
+    next(error);
+  }
+};
+
 

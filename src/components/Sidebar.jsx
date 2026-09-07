@@ -14,6 +14,7 @@ import {
   Users,
   FileSpreadsheet,
   Megaphone,
+  UserRound,
   LogOut,
   X
 } from 'lucide-react';
@@ -36,6 +37,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
     { id: 'users', path: '/users', label: t('users'), icon: Users },
     { id: 'audit_logs', path: '/audit-logs', label: t('audit_logs'), icon: FileSpreadsheet },
     { id: 'announcements', path: '/announcements', label: 'Announcements', icon: Megaphone },
+    { id: 'profile', path: '/profile', label: 'My Profile', icon: UserRound },
   ];
 
   // Filter menu items by permissions

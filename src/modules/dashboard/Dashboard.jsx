@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
@@ -13,23 +13,37 @@ import {
   MapPin 
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { api } from '../../services/api';
 
 export const Dashboard = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const [summary, setSummary] = useState(null);
+  const [dashboardError, setDashboardError] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchSummary = async () => {
+      try {
+        const response = await api.getDashboardSummary();
+        if (mounted) {
+          setSummary(response.data);
+          setDashboardError('');
+        }
+      } catch (error) {
+        if (mounted) setDashboardError(error.message || 'Failed to load dashboard data.');
+      }
+    };
+    fetchSummary();
+    return () => { mounted = false; };
+  }, [user?.id]);
 
   if (!user) return null;
 
-  // Mock numbers depending on role (Simulated database counts)
   const isZonal = user.role === 'Zonal ICT Focal Person';
   const zoneName = user.zone || 'Global';
 
-  const stats = {
-    assets: isZonal ? 142 : 1240,
-    tickets: isZonal ? 8 : 42,
-    devices: isZonal ? 15 : 180,
-    systems: 24, // Global systems
-  };
+  const stats = summary?.stats || { assets: 0, tickets: 0, openTickets: 0, devices: 0, systems: 0, operationalSystems: 0 };
 
   const getDashboardTitle = () => {
     switch (user.role) {
@@ -62,6 +76,11 @@ export const Dashboard = () => {
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-4 gap-4">
+        {dashboardError && (
+          <div className="badge badge-danger" style={{ gridColumn: '1 / -1', display: 'block', padding: '0.75rem', whiteSpace: 'normal' }}>
+            {dashboardError}
+          </div>
+        )}
         {/* KPI Assets */}
         <div className="card kpi-card">
           <div className="kpi-details">
@@ -82,7 +101,7 @@ export const Dashboard = () => {
             <h3>{t('kpi_tickets')}</h3>
             <div className="kpi-value">{stats.tickets}</div>
             <div className="kpi-trend" style={{ color: user.role === 'Department Staff/End User' ? 'var(--text-muted)' : 'var(--status-warning)' }}>
-              <Clock size={14} /> <span>{isZonal ? '3 Pending assignment' : '12 SLA Breach Risks'}</span>
+              <Clock size={14} /> <span>{stats.openTickets} unresolved</span>
             </div>
           </div>
           <div className="kpi-icon-wrapper" style={{ backgroundColor: 'var(--secondary-glow)', color: 'var(--secondary)' }}>
@@ -110,7 +129,7 @@ export const Dashboard = () => {
             <h3>{t('kpi_systems')}</h3>
             <div className="kpi-value">{stats.systems}</div>
             <div className="kpi-trend" style={{ color: 'var(--status-success)' }}>
-              <span>24/24 Operational</span>
+              <span>{stats.operationalSystems}/{stats.systems} Operational</span>
             </div>
           </div>
           <div className="kpi-icon-wrapper" style={{ backgroundColor: 'var(--primary-glow)', color: 'var(--primary)' }}>
@@ -131,31 +150,22 @@ export const Dashboard = () => {
               <span className="badge badge-success">Live Network Status</span>
             </div>
             
-            {/* Custom pure CSS bar graph representing latency/uptime */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
-              <div className="flex justify-between align-center" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                <span>Core Switch (Adama Headquarters)</span>
-                <span className="badge badge-success" style={{ textTransform: 'none' }}>99.9% (12ms ping)</span>
-              </div>
-              <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: '99.9%', background: 'linear-gradient(to right, var(--primary), var(--primary-light))' }} />
-              </div>
-
-              <div className="flex justify-between align-center" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                <span>Bale Zone Office Router</span>
-                <span className="badge badge-success" style={{ textTransform: 'none' }}>98.2% (48ms ping)</span>
-              </div>
-              <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: '98.2%', background: 'linear-gradient(to right, var(--primary), var(--secondary))' }} />
-              </div>
-
-              <div className="flex justify-between align-center" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                <span>Jimma Zone Office Router</span>
-                <span className="badge badge-danger" style={{ textTransform: 'none' }}>91.5% (124ms ping - Degraded)</span>
-              </div>
-              <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: '91.5%', background: 'linear-gradient(to right, var(--secondary), var(--status-danger))' }} />
-              </div>
+              {(summary?.networkNodes || []).map((node) => (
+                <div key={node.id}>
+                  <div className="flex justify-between align-center" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <span>{node.name} {node.zone ? `(${node.zone})` : ''}</span>
+                    <span className={`badge ${node.status === 'Online' ? 'badge-success' : 'badge-danger'}`} style={{ textTransform: 'none' }}>
+                      {node.uptime}% ({node.latency}ms ping)
+                    </span>
+                  </div>
+                  <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.min(node.uptime, 100)}%`, background: node.status === 'Online' ? 'var(--primary)' : 'var(--status-danger)' }} />
+                  </div>
+                </div>
+              ))}
+              {!summary && <div style={{ color: 'var(--text-muted)' }}>Loading network status...</div>}
+              {summary?.networkNodes?.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No network devices found.</div>}
             </div>
           </div>
 
@@ -189,32 +199,18 @@ export const Dashboard = () => {
             </div>
 
             <div className="timeline">
-              <div className="timeline-item">
-                <div className="timeline-dot" />
-                <div className="timeline-content">
-                  <div className="timeline-time">10 mins ago</div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>Asset Transferred</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>HP EliteBook 840 moved to Jimma Zonal Branch.</div>
+              {!summary && <div style={{ color: 'var(--text-muted)' }}>Loading recent activity...</div>}
+              {summary?.recentAuditLogs?.map((log) => (
+                <div className="timeline-item" key={log.id}>
+                  <div className="timeline-dot" />
+                  <div className="timeline-content">
+                    <div className="timeline-time">{new Date(log.timestamp).toLocaleString()}</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{log.action}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{log.details}</div>
+                  </div>
                 </div>
-              </div>
-
-              <div className="timeline-item">
-                <div className="timeline-dot warning" />
-                <div className="timeline-content">
-                  <div className="timeline-time">1 hour ago</div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>Ticket Escalated</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Ticket #301 escalated to Tier-2 support team.</div>
-                </div>
-              </div>
-
-              <div className="timeline-item">
-                <div className="timeline-dot danger" />
-                <div className="timeline-content">
-                  <div className="timeline-time">4 hours ago</div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>Critical Alert</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Windows Server license key EXP-99 expires in 3 days.</div>
-                </div>
-              </div>
+              ))}
+              {summary?.recentAuditLogs?.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No recent activity found.</div>}
             </div>
           </div>
 

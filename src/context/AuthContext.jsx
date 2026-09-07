@@ -73,6 +73,12 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('siims_jwt_token');
   };
 
+  const updateUserSession = (updatedUser, token) => {
+    if (token) localStorage.setItem('siims_jwt_token', token);
+    localStorage.setItem('siims_auth', JSON.stringify(updatedUser));
+    setUser(updatedUser);
+  };
+
   // Centralized Module Access Policy Matrix
   const hasAccess = (module) => {
     if (!user) return false;
@@ -113,6 +119,8 @@ export const AuthProvider = ({ children }) => {
         return true; // Notifications are global
       case 'announcements':
         return role === 'System Admin';
+      case 'profile':
+        return true;
       default:
         return false;
     }
@@ -152,7 +160,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading, hasAccess, canEdit }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUserSession, isLoading, hasAccess, canEdit }}>
       {children}
     </AuthContext.Provider>
   );
