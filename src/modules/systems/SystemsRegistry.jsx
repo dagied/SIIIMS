@@ -1,67 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { api } from '../../services/api';
 import { Plus, Search, ExternalLink, Globe, Database, Cpu, UserCheck, X } from 'lucide-react';
 
 export const SystemsRegistry = () => {
   const { user, canEdit } = useAuth();
   const { t } = useLanguage();
 
-  // Mock list of applications
-  const [systems, setSystems] = useState([
-    {
-      id: 'sys-1',
-      name: 'OSTA Core ERP System',
-      owner: 'Human Resources & Finance',
-      hosting: 'On-Premise',
-      status: 'Operational',
-      url: 'http://erp.osta.gov.et',
-      description: 'Central platform managing administrative resources, staff payroll, budgets, and public finance ledgers.',
-      techStack: 'React + Java Spring Boot',
-      dbType: 'PostgreSQL',
-      securityLevel: 'High (Level 3 Audit)',
-      adminName: 'Chala Gemechu'
-    },
-    {
-      id: 'sys-2',
-      name: 'Integrated ICT Assets Registry (SIIMS)',
-      owner: 'ICT Department',
-      hosting: 'Cloud',
-      status: 'Operational',
-      url: 'http://siims.osta.gov.et',
-      description: 'Central repository tracking hardware assets, network nodes, technical suphaa logs, and user ticketing.',
-      techStack: 'Vite React + Node.js Express',
-      dbType: 'PostgreSQL',
-      securityLevel: 'Medium',
-      adminName: 'Almaz Tolosa'
-    },
-    {
-      id: 'sys-3',
-      name: 'Zonal Communication Portal',
-      owner: 'Public Relations Department',
-      hosting: 'Hybrid',
-      status: 'Maintenance',
-      url: 'http://zonal.osta.gov.et',
-      description: 'Collaborative document sharing and announcements platform connecting zonal offices to headquarters.',
-      techStack: 'PHP Laravel + Vue.js',
-      dbType: 'MySQL',
-      securityLevel: 'Low',
-      adminName: 'Lensa Kebede'
-    },
-    {
-      id: 'sys-4',
-      name: 'OSTA Public Website',
-      owner: 'Public Relations Department',
-      hosting: 'Cloud',
-      status: 'Operational',
-      url: 'https://www.osta.gov.et',
-      description: 'Official public-facing informational portal providing research archives, authority directives, and news.',
-      techStack: 'WordPress Engine',
-      dbType: 'MySQL',
-      securityLevel: 'Low',
-      adminName: 'Kenenisa Bekele'
+  const [systems, setSystems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
+
+  const fetchSystems = async () => {
+    try {
+      setLoading(true);
+      setFetchError('');
+      const res = await api.getSystems();
+      if (res?.success && Array.isArray(res.data)) {
+        const mapped = res.data.map(s => ({
+          id: s.id,
+          name: s.name,
+          owner: s.ownerDept || 'ICT Directorate',
+          hosting: s.hosting || 'On-Premise',
+          status: s.status || 'Operational',
+          url: `http://${s.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.osta.gov.et`,
+          description: `Enterprise platform ${s.name} version ${s.version || 'v1.0'}`,
+          techStack: s.techStack || 'Node.js, PostgreSQL',
+          dbType: 'PostgreSQL',
+          securityLevel: 'High',
+          adminName: 'System Admin'
+        }));
+        setSystems(mapped);
+      } else {
+        setSystems([]);
+        setFetchError(res?.message || 'No system records were returned from the server.');
+      }
+    } catch (err) {
+      console.warn('[SystemsRegistry] Failed to fetch systems:', err);
+      setSystems([]);
+      setFetchError(err.message || 'Failed to load systems from the server.');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchSystems();
+  }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [hostingFilter, setHostingFilter] = useState('');
@@ -85,9 +71,9 @@ export const SystemsRegistry = () => {
 
   const filteredSystems = systems.filter(sys => {
     const matchesSearch = 
-      sys.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sys.owner.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sys.description.toLowerCase().includes(searchTerm.toLowerCase());
+      (sys.name && sys.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (sys.owner && sys.owner.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (sys.description && sys.description.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesHosting = hostingFilter === '' || sys.hosting === hostingFilter;
     const matchesStatus = statusFilter === '' || sys.status === statusFilter;
@@ -129,23 +115,34 @@ export const SystemsRegistry = () => {
     setActiveForm('edit');
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!formState.name || !formState.owner) return;
 
-    if (activeForm === 'register') {
-      const newSys = {
-        id: `sys-${systems.length + 1}`,
-        ...formState
-      };
-      setSystems(prev => [newSys, ...prev]);
-    } else if (activeForm === 'edit' && selectedSystem) {
-      setSystems(prev => prev.map(sys => sys.id === selectedSystem.id ? { ...sys, ...formState } : sys));
-    }
+    try {
+      if (activeForm === 'register') {
+        const payload = {
+          name: formState.name,
+          category: 'Enterprise Application',
+          version: 'v1.0.0',
+          hosting: formState.hosting,
+          status: formState.status,
+          ownerDept: formState.owner,
+          techStack: formState.techStack || 'Node.js, Express, PostgreSQL'
+        };
 
-    setActiveForm(null);
-    setSelectedSystem(null);
+        const res = await api.createSystem(payload);
+        if (res && res.success) {
+          setActiveForm(null);
+          setSelectedSystem(null);
+          await fetchSystems();
+        }
+      }
+    } catch (err) {
+      console.error('[SystemsRegistry] Failed to create system:', err);
+    }
   };
+
 
   const isWriteAllowed = canEdit('systems');
 
@@ -221,7 +218,19 @@ export const SystemsRegistry = () => {
 
       {/* Systems Grid */}
       <div className="grid grid-cols-2 gap-4">
-        {filteredSystems.map(sys => (
+        {loading ? (
+          <div style={{ gridColumn: '1 / -1', padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            Loading systems from database...
+          </div>
+        ) : fetchError ? (
+          <div className="badge badge-danger" style={{ gridColumn: '1 / -1', display: 'block', padding: '1rem', whiteSpace: 'normal' }}>
+            {fetchError}
+          </div>
+        ) : filteredSystems.length === 0 ? (
+          <div style={{ gridColumn: '1 / -1', padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            No systems found in the database.
+          </div>
+        ) : filteredSystems.map(sys => (
           <div key={sys.id} className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
               <div className="flex justify-between align-center" style={{ marginBottom: '0.75rem' }}>

@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 const AuthContext = createContext(undefined);
 
-// Mock Users for testing
+// Mock Users for testing & offline fallback
 const MOCK_PROFILES = {
   'System Admin': { id: 'usr-001', name: 'Almaz Tolosa', username: 'admin_almaz', email: 'almaz.t@osta.gov.et' },
   'ICT Technician': { id: 'usr-002', name: 'Chala Gemechu', username: 'tech_chala', email: 'chala.g@osta.gov.et' },
@@ -21,14 +22,36 @@ export const AuthProvider = ({ children }) => {
       setUser(JSON.parse(saved));
     }
     setIsLoading(false);
+
+    const handleAuthExpired = () => {
+      setUser(null);
+    };
+
+    window.addEventListener('siims:auth-expired', handleAuthExpired);
+    return () => window.removeEventListener('siims:auth-expired', handleAuthExpired);
   }, []);
 
-  const login = async (role, username = '') => {
+  const login = async (role, username = '', password = '') => {
     setIsLoading(true);
-    // Simulate low-bandwidth network latency for premium real feel
-    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    try {
+      // Attempt backend authentication
+      const res = await api.login({ role, username, password });
+      if (res && res.token && res.user) {
+        localStorage.setItem('siims_jwt_token', res.token);
+        localStorage.setItem('siims_auth', JSON.stringify(res.user));
+        setUser(res.user);
+        setIsLoading(false);
+        return true;
+      }
+    } catch (e) {
+      console.warn('Backend login request failed or backend offline. Falling back to frontend session mode:', e.message);
+    }
     
-    const profile = MOCK_PROFILES[role];
+    // Fallback if backend server is not running yet
+    localStorage.removeItem('siims_jwt_token');
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const profile = MOCK_PROFILES[role] || MOCK_PROFILES['System Admin'];
     const loggedInUser = {
       id: profile.id,
       name: profile.name,
@@ -47,6 +70,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('siims_auth');
+    localStorage.removeItem('siims_jwt_token');
   };
 
   // Centralized Module Access Policy Matrix
@@ -87,6 +111,8 @@ export const AuthProvider = ({ children }) => {
         return ['System Admin', 'ICT Technician', 'Management/Executive Viewer'].includes(role);
       case 'notifications':
         return true; // Notifications are global
+      case 'announcements':
+        return role === 'System Admin';
       default:
         return false;
     }

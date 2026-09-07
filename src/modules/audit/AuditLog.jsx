@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { api } from '../../services/api';
 import { Search, ShieldAlert, Calendar, Filter } from 'lucide-react';
 
 export const AuditLog = () => {
@@ -10,64 +11,38 @@ export const AuditLog = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [moduleFilter, setModuleFilter] = useState('');
   const [severityFilter, setSeverityFilter] = useState('');
+  const [audits, setAudits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
 
-  // Mock list of global audit trail logs
-  const [audits] = useState([
-    {
-      id: 'aud-1',
-      timestamp: '2026-07-28 15:30:12',
-      user: 'admin_almaz',
-      action: 'Suspended user account: tola_suspended',
-      module: 'User Management',
-      ipAddress: '192.168.10.45',
-      severity: 'Warning'
-    },
-    {
-      id: 'aud-2',
-      timestamp: '2026-07-28 14:15:30',
-      user: 'tech_chala',
-      action: 'Registered new asset: Cisco Catalyst 9300 (OSTA-2026-003)',
-      module: 'Assets & Inventory',
-      ipAddress: '192.168.10.82',
-      severity: 'Info'
-    },
-    {
-      id: 'aud-3',
-      timestamp: '2026-07-28 11:22:04',
-      user: 'admin_almaz',
-      action: 'Modified system permissions mapping for Zonal ICT Focal Person',
-      module: 'Security Policy',
-      ipAddress: '192.168.10.45',
-      severity: 'Critical'
-    },
-    {
-      id: 'aud-4',
-      timestamp: '2026-07-28 09:48:51',
-      user: 'zone_lensa',
-      action: 'Submitted support ticket #403: "Internet failure at East Shewa"',
-      module: 'Helpdesk Tickets',
-      ipAddress: '10.12.1.25',
-      severity: 'Info'
-    },
-    {
-      id: 'aud-5',
-      timestamp: '2026-07-27 16:04:10',
-      user: 'tech_chala',
-      action: 'Marked corrective maintenance task #maint-2 as resolved',
-      module: 'Maintenance',
-      ipAddress: '192.168.10.82',
-      severity: 'Info'
-    },
-    {
-      id: 'aud-6',
-      timestamp: '2026-07-27 10:12:00',
-      user: 'system_daemon',
-      action: 'License key EXP-99 automatic check: 3 days remaining warning',
-      module: 'Contracts & Expirations',
-      ipAddress: '127.0.0.1',
-      severity: 'Critical'
+  const fetchAudits = async () => {
+    try {
+      const res = await api.getAuditLogs();
+      if (!res?.success || !Array.isArray(res.data)) {
+        throw new Error(res?.message || 'Invalid audit log response.');
+      }
+      setAudits(res.data.map((log) => ({
+        id: log.id,
+        timestamp: new Date(log.timestamp).toLocaleString(),
+        user: log.userRole || 'System',
+        action: log.details || log.action,
+        module: log.module,
+        ipAddress: log.ipAddress,
+        severity: log.action.includes('DELETE') ? 'Warning' : 'Info'
+      })));
+      setFetchError('');
+    } catch (err) {
+      setFetchError(err.message || 'Failed to load audit logs.');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchAudits();
+    const refreshTimer = window.setInterval(fetchAudits, 3000);
+    return () => window.clearInterval(refreshTimer);
+  }, []);
 
   const filteredAudits = audits.filter(log => {
     const matchesSearch = 
@@ -120,12 +95,13 @@ export const AuditLog = () => {
               aria-label="System Module"
             >
               <option value="">{t('all')} Modules</option>
-              <option value="User Management">User Management</option>
-              <option value="Assets & Inventory">Assets & Inventory</option>
-              <option value="Security Policy">Security Policy</option>
-              <option value="Helpdesk Tickets">Helpdesk Tickets</option>
+              <option value="Auth">Auth</option>
+              <option value="Users">Users</option>
+              <option value="Assets">Assets</option>
+              <option value="Helpdesk">Helpdesk</option>
               <option value="Maintenance">Maintenance</option>
-              <option value="Contracts & Expirations">Contracts & Expirations</option>
+              <option value="Network">Network</option>
+              <option value="Systems">Systems</option>
             </select>
           </div>
 
@@ -162,7 +138,19 @@ export const AuditLog = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredAudits.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                  Loading live audit events...
+                </td>
+              </tr>
+            ) : fetchError ? (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center', color: 'var(--status-danger)', padding: '2rem' }}>
+                  {fetchError}
+                </td>
+              </tr>
+            ) : filteredAudits.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                   No matching log entries found in registry database.

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { api } from '../../services/api';
 import { Plus, Wrench, CheckSquare, Calendar, Users, ShieldAlert, X } from 'lucide-react';
 
 export const MaintenanceManagement = () => {
@@ -10,64 +11,38 @@ export const MaintenanceManagement = () => {
   const [activeTab, setActiveTab] = useState('Scheduled');
   const [selectedTask, setSelectedTask] = useState(null);
   const [activeForm, setActiveForm] = useState(null);
+  const [maintenanceList, setMaintenanceList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock list of maintenance logs
-  const [maintenanceList, setMaintenanceList] = useState([
-    {
-      id: 'maint-1',
-      title: 'Quarterly Server Dust Cleaning & Backup Test',
-      assetTag: 'OSTA-2026-002',
-      assetName: 'Dell PowerEdge R740 Server',
-      type: 'Preventive',
-      technician: 'Chala Gemechu',
-      status: 'Pending',
-      date: '2026-08-15',
-      checklist: [
-        'Perform complete database snapshot backup',
-        'Verify secondary power source (UPS) battery health',
-        'Shutdown server and blow out dust from ventilation fan ducts',
-        'Boot up server, run hardware self-diagnostics checks'
-      ],
-      remarks: 'Standard hardware lifespan preservation maintenance'
-    },
-    {
-      id: 'maint-2',
-      title: 'Switch Port #12 Re-cabling & Patching',
-      assetTag: 'OSTA-2026-003',
-      assetName: 'Cisco Catalyst 9300 Switch',
-      type: 'Corrective',
-      technician: 'Chala Gemechu',
-      status: 'Completed',
-      date: '2026-07-20',
-      durationHours: 2.5,
-      cost: '45 USD',
-      remarks: 'Cat-6 Ethernet cable port termination had decayed. Replaced cable and patch panel jack. Tested OK.'
-    },
-    {
-      id: 'maint-3',
-      title: 'East Shewa Zone UPS Battery Replacement',
-      assetTag: 'OSTA-2026-003',
-      assetName: 'Cisco Catalyst 9300 Switch', // Associated with the zone stack
-      type: 'Corrective',
-      technician: 'Lensa Kebede',
-      status: 'Overdue',
-      date: '2026-07-10',
-      remarks: 'UPS backup fails immediately when power is lost. New 12V batteries ordered but delivery is delayed.'
-    },
-    {
-      id: 'maint-4',
-      title: 'Monthly OS Patching & Security Audit',
-      assetTag: 'OSTA-2026-001',
-      assetName: 'HP EliteBook 840 G8 Laptop',
-      type: 'Preventive',
-      technician: 'Almaz Tolosa',
-      status: 'Completed',
-      date: '2026-07-25',
-      durationHours: 1,
-      checklist: ['Apply latest Windows security patches', 'Run antivirus scan', 'Verify firewalls are enabled'],
-      remarks: 'Standard monthly compliance checklist'
+  const fetchTasks = async () => {
+    try {
+      setLoading(true);
+      const res = await api.getMaintenanceTasks();
+      if (res && res.data) {
+        const mapped = res.data.map(m => ({
+          id: m.id,
+          title: m.title,
+          assetTag: m.asset?.tagId || 'N/A',
+          assetName: m.asset?.name || 'Unspecified Asset',
+          type: m.type || 'Preventive',
+          technician: m.technician?.name || 'Unassigned',
+          status: m.status || 'Pending',
+          date: m.scheduledDate ? new Date(m.scheduledDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          checklist: m.notes ? [m.notes] : ['Perform routine check'],
+          remarks: m.notes || 'Maintenance task registered'
+        }));
+        setMaintenanceList(mapped);
+      }
+    } catch (err) {
+      console.warn('[Maintenance] Failed to fetch tasks:', err);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
 
   // Form input states
   const [schedForm, setSchedForm] = useState({
@@ -94,50 +69,54 @@ export const MaintenanceManagement = () => {
   const scheduledTasks = maintenanceList.filter(item => item.type === 'Preventive');
   const correctiveLogs = maintenanceList.filter(item => item.type === 'Corrective');
 
-  const handleScheduleSubmit = (e) => {
+  const handleScheduleSubmit = async (e) => {
     e.preventDefault();
-    if (!schedForm.title || !schedForm.date) return;
+    if (!schedForm.title) return;
 
-    const newTask = {
-      id: `maint-${maintenanceList.length + 1}`,
-      title: schedForm.title,
-      assetTag: schedForm.assetTag || 'N/A',
-      assetName: schedForm.assetName || 'Unspecified Asset',
-      type: 'Preventive',
-      technician: schedForm.technician || user?.name || 'Unassigned',
-      status: 'Pending',
-      date: schedForm.date,
-      checklist: schedForm.checklistText.split('\n').filter(line => line.trim() !== ''),
-      remarks: schedForm.remarks
-    };
+    try {
+      const payload = {
+        title: schedForm.title,
+        type: 'Preventive',
+        scheduledDate: schedForm.date || new Date().toISOString().split('T')[0],
+        priority: 'Medium',
+        notes: schedForm.remarks || schedForm.checklistText
+      };
 
-    setMaintenanceList(prev => [newTask, ...prev]);
-    setActiveForm(null);
-    setSchedForm({ title: '', assetTag: '', assetName: '', technician: '', date: '', checklistText: '', remarks: '' });
+      const res = await api.createMaintenanceTask(payload);
+      if (res && res.success) {
+        setActiveForm(null);
+        setSchedForm({ title: '', assetTag: '', assetName: '', technician: '', date: '', checklistText: '', remarks: '' });
+        await fetchTasks();
+      }
+    } catch (err) {
+      console.error('[Maintenance] Failed to create scheduled task:', err);
+    }
   };
 
-  const handleCorrectiveSubmit = (e) => {
+  const handleCorrectiveSubmit = async (e) => {
     e.preventDefault();
-    if (!corrForm.title || !corrForm.date) return;
+    if (!corrForm.title) return;
 
-    const newLog = {
-      id: `maint-${maintenanceList.length + 1}`,
-      title: corrForm.title,
-      assetTag: corrForm.assetTag || 'N/A',
-      assetName: corrForm.assetName || 'Unspecified Asset',
-      type: 'Corrective',
-      technician: corrForm.technician || user?.name || 'Unassigned',
-      status: 'Completed',
-      date: corrForm.date,
-      durationHours: Number(corrForm.durationHours),
-      cost: corrForm.cost || '0 USD',
-      remarks: corrForm.remarks
-    };
+    try {
+      const payload = {
+        title: corrForm.title,
+        type: 'Corrective',
+        scheduledDate: corrForm.date || new Date().toISOString().split('T')[0],
+        priority: 'High',
+        notes: corrForm.remarks
+      };
 
-    setMaintenanceList(prev => [newLog, ...prev]);
-    setActiveForm(null);
-    setCorrForm({ title: '', assetTag: '', assetName: '', technician: '', date: '', durationHours: 1, cost: '', remarks: '' });
+      const res = await api.createMaintenanceTask(payload);
+      if (res && res.success) {
+        setActiveForm(null);
+        setCorrForm({ title: '', assetTag: '', assetName: '', technician: '', date: '', durationHours: 1, cost: '', remarks: '' });
+        await fetchTasks();
+      }
+    } catch (err) {
+      console.error('[Maintenance] Failed to create corrective task:', err);
+    }
   };
+
 
   const handleMarkCompleted = (task) => {
     const today = new Date().toISOString().split('T')[0];

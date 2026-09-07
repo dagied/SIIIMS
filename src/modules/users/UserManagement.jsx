@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { Plus, Search, X } from 'lucide-react';
+import { api } from '../../services/api';
+import { Plus, Search, X, CheckCircle, Mail, Key, User } from 'lucide-react';
 
 export const UserManagement = () => {
   const { canEdit } = useAuth();
@@ -9,59 +10,13 @@ export const UserManagement = () => {
 
   const [selectedUser, setSelectedUser] = useState(null);
   const [activeForm, setActiveForm] = useState(null);
+  const [usersList, setUsersList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Mock list of users
-  const [usersList, setUsersList] = useState([
-    {
-      id: 'usr-1',
-      name: 'Almaz Tolosa',
-      username: 'admin_almaz',
-      email: 'almaz.t@osta.gov.et',
-      role: 'System Admin',
-      status: 'Active'
-    },
-    {
-      id: 'usr-2',
-      name: 'Chala Gemechu',
-      username: 'tech_chala',
-      email: 'chala.g@osta.gov.et',
-      role: 'ICT Technician',
-      status: 'Active'
-    },
-    {
-      id: 'usr-3',
-      name: 'Lensa Kebede',
-      username: 'zone_lensa',
-      email: 'lensa.k@osta.gov.et',
-      role: 'Zonal ICT Focal Person',
-      zone: 'East Shewa Zone',
-      status: 'Active'
-    },
-    {
-      id: 'usr-4',
-      name: 'Derartu Tulu',
-      username: 'staff_derartu',
-      email: 'derartu.t@osta.gov.et',
-      role: 'Department Staff/End User',
-      status: 'Active'
-    },
-    {
-      id: 'usr-5',
-      name: 'Dr. Kenenisa Bekele',
-      username: 'exec_kenenisa',
-      email: 'kenenisa.b@osta.gov.et',
-      role: 'Management/Executive Viewer',
-      status: 'Active'
-    },
-    {
-      id: 'usr-6',
-      name: 'Tola Abera',
-      username: 'tola_suspended',
-      email: 'tola.a@osta.gov.et',
-      role: 'Department Staff/End User',
-      status: 'Suspended'
-    }
-  ]);
+  // Success modal state for showing auto-generated credentials to admin
+  const [credentialsModal, setCredentialsModal] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -76,11 +31,31 @@ export const UserManagement = () => {
     status: 'Active'
   });
 
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      setErrorMsg(null);
+      const res = await api.getUsers();
+      if (res && res.data) {
+        setUsersList(res.data);
+      }
+    } catch (err) {
+      console.warn('[UserManagement] API Fetch error, using fallback or empty:', err.message);
+      setErrorMsg(err.message || 'Failed to load users from server.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
   const filteredUsers = usersList.filter(u => {
     const matchesSearch = 
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase());
+      (u.name && u.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (u.username && u.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesRole = roleFilter === '' || u.role === roleFilter;
 
@@ -97,6 +72,7 @@ export const UserManagement = () => {
       status: 'Active'
     });
     setSelectedUser(null);
+    setErrorMsg(null);
     setActiveForm('register');
   };
 
@@ -110,43 +86,97 @@ export const UserManagement = () => {
       zone: u.zone || '',
       status: u.status
     });
+    setErrorMsg(null);
     setActiveForm('edit');
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    if (!formState.name || !formState.username) return;
-
-    if (activeForm === 'register') {
-      const newUser = {
-        id: `usr-${usersList.length + 1}`,
-        ...formState,
-        zone: formState.role === 'Zonal ICT Focal Person' ? formState.zone : undefined
-      };
-      setUsersList(prev => [newUser, ...prev]);
-    } else if (activeForm === 'edit' && selectedUser) {
-      setUsersList(prev => prev.map(u => u.id === selectedUser.id ? { 
-        ...u, 
-        ...formState,
-        zone: formState.role === 'Zonal ICT Focal Person' ? formState.zone : undefined 
-      } : u));
+    if (!formState.name.trim() || !formState.email.trim()) {
+      setErrorMsg('Full employee name and official email address are required.');
+      return;
     }
 
-    setActiveForm(null);
-    setSelectedUser(null);
+    if (activeForm === 'register' && formState.role === 'Zonal ICT Focal Person' && !formState.zone) {
+      setErrorMsg('Select a geographic zone for a zonal ICT focal person.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setErrorMsg(null);
+
+      if (activeForm === 'register') {
+        const payload = {
+          name: formState.name,
+          email: formState.email,
+          role: formState.role,
+          zone: formState.role === 'Zonal ICT Focal Person' ? formState.zone : 'Headquarters',
+          department: 'General'
+        };
+
+        const res = await api.createUser(payload);
+        if (res && res.success) {
+          // Open credentials confirmation modal
+          setCredentialsModal(res.data);
+          setActiveForm(null);
+          setSelectedUser(null);
+          await fetchUsers();
+        } else {
+          setErrorMsg(res?.message || 'The user could not be registered.');
+        }
+      } else if (activeForm === 'edit' && selectedUser) {
+        const payload = {
+          name: formState.name,
+          username: formState.username,
+          email: formState.email,
+          role: formState.role,
+          zone: formState.role === 'Zonal ICT Focal Person' ? formState.zone : 'Headquarters',
+          status: formState.status
+        };
+
+        const res = await api.updateUser(selectedUser.id, payload);
+        if (res && res.success) {
+          setActiveForm(null);
+          setSelectedUser(null);
+          await fetchUsers();
+        } else {
+          setErrorMsg(res?.message || 'The user could not be updated.');
+        }
+      }
+    } catch (err) {
+      console.error('[UserManagement] Form submit error:', err);
+      setErrorMsg(err.message || 'Failed to process request.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const toggleStatus = (targetUser) => {
-    setUsersList(prev => prev.map(u => {
-      if (u.id === targetUser.id) {
-        return {
-          ...u,
-          status: u.status === 'Active' ? 'Suspended' : 'Active'
-        };
+  const toggleStatus = async (targetUser) => {
+    try {
+      setErrorMsg(null);
+      // Optimistic UI update
+      setUsersList(prev => prev.map(u => {
+        if (u.id === targetUser.id) {
+          return {
+            ...u,
+            status: u.status === 'Active' ? 'Suspended' : 'Active'
+          };
+        }
+        return u;
+      }));
+
+      const res = await api.toggleUserStatus(targetUser.id);
+      if (res && res.success) {
+        await fetchUsers();
       }
-      return u;
-    }));
+    } catch (err) {
+      console.error('[UserManagement] Toggle status error:', err);
+      setErrorMsg(err.message || 'Failed to update user status.');
+      await fetchUsers(); // revert on error
+    }
   };
+
 
   const isWriteAllowed = canEdit('users');
   const roleList = [
@@ -163,7 +193,7 @@ export const UserManagement = () => {
         <div>
           <h1>{t('users')}</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            CRUD system accounts, assign security roles, and link regional technicians to zonal offices.
+            CRUD system accounts, assign security roles, auto-generate credentials, and dispatch to user email.
           </p>
         </div>
         {isWriteAllowed && (
@@ -173,6 +203,12 @@ export const UserManagement = () => {
           </button>
         )}
       </div>
+
+      {errorMsg && (
+        <div style={{ background: '#fef2f2', color: '#991b1b', padding: '0.75rem 1rem', borderRadius: '6px', fontSize: '0.9rem', border: '1px solid #fecaca' }}>
+          ⚠️ {errorMsg}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="card" style={{ padding: '1rem' }}>
@@ -212,69 +248,83 @@ export const UserManagement = () => {
 
       {/* Users Table */}
       <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Full Name</th>
-              <th>Username</th>
-              <th>Email Address</th>
-              <th>Assigned Role</th>
-              <th>Linked Zone Branch</th>
-              <th>Status</th>
-              <th>{t('actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map((u) => (
-              <tr key={u.id}>
-                <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{u.name}</td>
-                <td><code style={{ fontSize: '0.8rem' }}>{u.username}</code></td>
-                <td>{u.email}</td>
-                <td>
-                  <span className="badge badge-info" style={{ textTransform: 'none' }}>
-                    {u.role}
-                  </span>
-                </td>
-                <td>
-                  {u.role === 'Zonal ICT Focal Person' ? (
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)' }}>
-                      🏢 {u.zone || 'Not Specified'}
-                    </span>
-                  ) : (
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Global HQ</span>
-                  )}
-                </td>
-                <td>
-                  <span className={`badge ${u.status === 'Active' ? 'badge-success' : 'badge-danger'}`}>
-                    {u.status}
-                  </span>
-                </td>
-                <td>
-                  <div className="flex gap-2">
-                    {isWriteAllowed && (
-                      <>
-                        <button 
-                          className="btn btn-secondary" 
-                          style={{ padding: '4px 8px', fontSize: '0.75rem' }}
-                          onClick={() => handleEditClick(u)}
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          className="btn btn-secondary" 
-                          style={{ padding: '4px 8px', fontSize: '0.75rem', borderColor: u.status === 'Active' ? 'var(--status-danger)' : 'var(--primary)', color: u.status === 'Active' ? 'var(--status-danger)' : 'var(--primary)' }}
-                          onClick={() => toggleStatus(u)}
-                        >
-                          {u.status === 'Active' ? 'Suspend' : 'Activate'}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </td>
+        {loading ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            Loading users from database...
+          </div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Full Name</th>
+                <th>Username</th>
+                <th>Email Address</th>
+                <th>Assigned Role</th>
+                <th>Linked Zone Branch</th>
+                <th>Status</th>
+                <th>{t('actions')}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                    No users found. Click "Create User" to register an account.
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((u) => (
+                  <tr key={u.id}>
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{u.name}</td>
+                    <td><code style={{ fontSize: '0.85rem', background: 'var(--bg-secondary)', padding: '2px 6px', borderRadius: '4px' }}>{u.username}</code></td>
+                    <td>{u.email}</td>
+                    <td>
+                      <span className="badge badge-info" style={{ textTransform: 'none' }}>
+                        {u.role}
+                      </span>
+                    </td>
+                    <td>
+                      {u.role === 'Zonal ICT Focal Person' ? (
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)' }}>
+                          🏢 {u.zone || 'Not Specified'}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{u.zone || 'Global HQ'}</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`badge ${u.status === 'Active' ? 'badge-success' : 'badge-danger'}`}>
+                        {u.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="flex gap-2">
+                        {isWriteAllowed && (
+                          <>
+                            <button 
+                              className="btn btn-secondary" 
+                              style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                              onClick={() => handleEditClick(u)}
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              className="btn btn-secondary" 
+                              style={{ padding: '4px 8px', fontSize: '0.75rem', borderColor: u.status === 'Active' ? 'var(--status-danger)' : 'var(--primary)', color: u.status === 'Active' ? 'var(--status-danger)' : 'var(--primary)' }}
+                              onClick={() => toggleStatus(u)}
+                            >
+                              {u.status === 'Active' ? 'Suspend' : 'Activate'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* REGISTER / EDIT USER DRAWER */}
@@ -287,6 +337,12 @@ export const UserManagement = () => {
                 <button type="button" className="nav-btn" onClick={() => setActiveForm(null)} aria-label="Close drawer"><X size={18} /></button>
               </div>
               <div className="drawer-body">
+                {activeForm === 'register' && (
+                  <div style={{ background: 'var(--bg-secondary)', padding: '0.85rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem', borderLeft: '4px solid var(--primary)' }}>
+                    <strong>✨ Auto-Generated Credentials:</strong> Username (FirstName + Random Digits) and Temporary Password will be generated automatically and emailed to the official address provided below.
+                  </div>
+                )}
+
                 <div className="form-group">
                   <label htmlFor="usr-form-name">Full Employee Name *</label>
                   <input
@@ -299,18 +355,22 @@ export const UserManagement = () => {
                     onChange={(e) => setFormState(prev => ({ ...prev, name: e.target.value }))}
                   />
                 </div>
-                <div className="form-group">
-                  <label htmlFor="usr-form-uname">System Username *</label>
-                  <input
-                    id="usr-form-uname"
-                    type="text"
-                    required
-                    className="input-field"
-                    placeholder="e.g. ebise_g"
-                    value={formState.username}
-                    onChange={(e) => setFormState(prev => ({ ...prev, username: e.target.value }))}
-                  />
-                </div>
+
+                {activeForm === 'edit' && (
+                  <div className="form-group">
+                    <label htmlFor="usr-form-uname">System Username *</label>
+                    <input
+                      id="usr-form-uname"
+                      type="text"
+                      required
+                      className="input-field"
+                      placeholder="e.g. ebise4829"
+                      value={formState.username}
+                      onChange={(e) => setFormState(prev => ({ ...prev, username: e.target.value }))}
+                    />
+                  </div>
+                )}
+
                 <div className="form-group">
                   <label htmlFor="usr-form-email">Official Email Address *</label>
                   <input
@@ -323,6 +383,7 @@ export const UserManagement = () => {
                     onChange={(e) => setFormState(prev => ({ ...prev, email: e.target.value }))}
                   />
                 </div>
+
                 <div className="form-group">
                   <label htmlFor="usr-form-role">Security Access Role</label>
                   <select
@@ -357,27 +418,84 @@ export const UserManagement = () => {
                   </div>
                 )}
 
-                <div className="form-group">
-                  <label htmlFor="usr-form-status">Account Authorization Status</label>
-                  <select
-                    id="usr-form-status"
-                    className="input-field"
-                    value={formState.status}
-                    onChange={(e) => setFormState(prev => ({ ...prev, status: e.target.value }))}
-                  >
-                    <option value="Active">Active / Approved</option>
-                    <option value="Suspended">Suspended / Deactivated</option>
-                  </select>
-                </div>
+                {activeForm === 'edit' && (
+                  <div className="form-group">
+                    <label htmlFor="usr-form-status">Account Authorization Status</label>
+                    <select
+                      id="usr-form-status"
+                      className="input-field"
+                      value={formState.status}
+                      onChange={(e) => setFormState(prev => ({ ...prev, status: e.target.value }))}
+                    >
+                      <option value="Active">Active / Approved</option>
+                      <option value="Suspended">Suspended / Deactivated</option>
+                    </select>
+                  </div>
+                )}
               </div>
               <div className="drawer-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setActiveForm(null)}>{t('cancel')}</button>
-                <button type="submit" className="btn btn-primary">Save Changes</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? 'Saving...' : activeForm === 'register' ? 'Register & Send Email' : 'Save Changes'}
+                </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* SUCCESS CREDENTIALS POPUP MODAL */}
+      {credentialsModal && (
+        <div className="drawer-overlay" style={{ background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card animate-fade-in" style={{ width: '90%', maxWidth: '450px', padding: '1.5rem', background: 'var(--bg-card)', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+              <div style={{ background: '#dcfce7', width: '56px', height: '56px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                <CheckCircle size={32} color="#16a34a" />
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>User Created Successfully!</h2>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                Saved to PostgreSQL database and credentials dispatched to employee email.
+              </p>
+            </div>
+
+            <div style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <User size={16} color="var(--primary)" />
+                <span style={{ color: 'var(--text-muted)' }}>Full Name:</span>
+                <strong style={{ marginLeft: 'auto' }}>{credentialsModal.name}</strong>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <User size={16} color="var(--primary)" />
+                <span style={{ color: 'var(--text-muted)' }}>Auto Username:</span>
+                <code style={{ marginLeft: 'auto', background: 'var(--bg-main)', padding: '2px 8px', borderRadius: '4px', color: 'var(--primary)', fontWeight: 600 }}>
+                  {credentialsModal.username}
+                </code>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Key size={16} color="var(--primary)" />
+                <span style={{ color: 'var(--text-muted)' }}>Temp Password:</span>
+                <code style={{ marginLeft: 'auto', background: 'var(--bg-main)', padding: '2px 8px', borderRadius: '4px', color: '#d97706', fontWeight: 600 }}>
+                  {credentialsModal.generatedPassword}
+                </code>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Mail size={16} color="var(--primary)" />
+                <span style={{ color: 'var(--text-muted)' }}>Sent To:</span>
+                <span style={{ marginLeft: 'auto', fontSize: '0.85rem' }}>{credentialsModal.email}</span>
+              </div>
+            </div>
+
+            <button 
+              className="btn btn-primary" 
+              style={{ width: '100%', marginTop: '1.25rem' }}
+              onClick={() => setCredentialsModal(null)}
+            >
+              Done & Close
+            </button>
           </div>
         </div>
       )}
     </div>
   );
 };
+

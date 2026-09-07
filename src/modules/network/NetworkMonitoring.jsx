@@ -1,106 +1,58 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { Search, Server, Shield, Network, RefreshCw, X, Radio, AlertTriangle } from 'lucide-react';
+import { api } from '../../services/api';
+import { Search, Server, Shield, Network, RefreshCw, X, Radio, AlertTriangle, Plus } from 'lucide-react';
 
 export const NetworkMonitoring = () => {
-  const { user } = useAuth();
+  const { user, canEdit } = useAuth();
   const { t } = useLanguage();
 
-  // Mock list of network devices
-  const [devices, setDevices] = useState([
-    {
-      id: 'net-1',
-      name: 'OSTA HQ Core Switch',
-      ip: '10.10.1.1',
-      mac: '00:1B:44:11:3A:B7',
-      type: 'Switch',
-      status: 'Online',
-      location: 'Adama Headquarters Server Room',
-      latency: 12,
-      uptime: '45 days, 12 hours',
-      ports: Array.from({ length: 24 }, (_, i) => ({
-        port: i + 1,
-        status: i < 12 ? 'active' : i < 20 ? 'inactive' : 'disabled',
-      })),
-    },
-    {
-      id: 'net-2',
-      name: 'OSTA Core Gateway Router',
-      ip: '10.10.1.254',
-      mac: '00:1B:44:11:3C:A9',
-      type: 'Router',
-      status: 'Online',
-      location: 'Adama Headquarters Server Room',
-      latency: 8,
-      uptime: '124 days, 3 hours',
-      ports: [
-        { port: 1, status: 'active' },
-        { port: 2, status: 'active' },
-        { port: 3, status: 'inactive' },
-        { port: 4, status: 'disabled' },
-      ],
-    },
-    {
-      id: 'net-3',
-      name: 'Bale Zone Office Gateway',
-      ip: '10.12.10.254',
-      mac: '00:1B:44:22:9E:FF',
-      type: 'Router',
-      status: 'Online',
-      location: 'Bale Zone Branch Office',
-      latency: 48,
-      uptime: '14 days, 1 hour',
-      ports: [
-        { port: 1, status: 'active' },
-        { port: 2, status: 'inactive' },
-      ],
-    },
-    {
-      id: 'net-4',
-      name: 'Jimma Zone Office Router',
-      ip: '10.14.10.254',
-      mac: '00:1B:44:33:CF:D1',
-      type: 'Router',
-      status: 'Degraded',
-      location: 'Jimma Zone Branch Office',
-      latency: 124,
-      uptime: '3 days, 18 hours',
-      ports: [
-        { port: 1, status: 'active' },
-        { port: 2, status: 'active' },
-      ],
-    },
-    {
-      id: 'net-5',
-      name: 'OSTA Web Hosting Server',
-      ip: '10.10.2.20',
-      mac: '00:1B:44:11:FA:B1',
-      type: 'Server',
-      status: 'Online',
-      location: 'HQ Data Center Rack B',
-      latency: 15,
-      uptime: '90 days, 6 hours',
-      ports: [
-        { port: 1, status: 'active' },
-        { port: 2, status: 'active' },
-      ],
-    },
-    {
-      id: 'net-6',
-      name: 'HQ Ground Floor Access Point',
-      ip: '10.10.5.50',
-      mac: '00:1B:44:99:AA:C4',
-      type: 'Access Point',
-      status: 'Offline',
-      location: 'Adama HQ Lobby reception',
-      latency: 0,
-      uptime: '0 days (Offline)',
-      ports: [
-        { port: 1, status: 'disabled' },
-      ],
+  const [devices, setDevices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeForm, setActiveForm] = useState(null);
+  const [newNode, setNewNode] = useState({
+    name: '',
+    ipAddress: '',
+    macAddress: '',
+    type: 'Router',
+    location: '',
+    zone: 'Headquarters'
+  });
+  const isWriteAllowed = canEdit;
+
+  const fetchNodes = async () => {
+    try {
+      setLoading(true);
+      const res = await api.getNetworkNodes();
+      if (res && res.data) {
+        const mapped = res.data.map(d => ({
+          id: d.id,
+          name: d.name,
+          ip: d.ipAddress,
+          mac: d.macAddress || 'N/A',
+          type: d.type || 'Router',
+          status: d.status || 'Online',
+          location: d.location || 'Server Room',
+          latency: d.latency || 5,
+          uptime: `${d.uptime || 99.9}%`,
+          ports: Array.from({ length: 8 }, (_, i) => ({
+            port: i + 1,
+            status: i < 4 ? 'active' : 'inactive',
+          })),
+        }));
+        setDevices(mapped);
+      }
+    } catch (err) {
+      console.warn('[NetworkMonitoring] Failed to fetch nodes:', err);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchNodes();
+  }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -108,35 +60,49 @@ export const NetworkMonitoring = () => {
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Simulate network status refresh
-  const triggerRefresh = () => {
+  const triggerRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setDevices(prev => prev.map(dev => {
-        if (dev.status === 'Offline') return dev;
-        // Randomly tweak latency slightly for simulation realism
-        const delta = Math.floor(Math.random() * 9) - 4;
-        const newLatency = Math.max(2, dev.latency + delta);
-        return {
-          ...dev,
-          latency: newLatency
-        };
-      }));
-      setIsRefreshing(false);
-    }, 1000);
+    await fetchNodes();
+    setIsRefreshing(false);
+  };
+
+  const handleRegisterNode = async (e) => {
+    e.preventDefault();
+    if (!newNode.name || !newNode.ipAddress) return;
+
+    try {
+      const payload = {
+        name: newNode.name,
+        ipAddress: newNode.ipAddress,
+        macAddress: newNode.macAddress,
+        type: newNode.type,
+        location: newNode.location || 'Finfinne Central DC',
+        zone: newNode.zone || 'Headquarters'
+      };
+
+      const res = await api.createNetworkNode(payload);
+      if (res && res.success) {
+        setActiveForm(null);
+        setNewNode({ name: '', ipAddress: '', macAddress: '', type: 'Router', location: '', zone: 'Headquarters' });
+        await fetchNodes();
+      }
+    } catch (err) {
+      console.error('[NetworkMonitoring] Failed to create node:', err);
+    }
   };
 
   const filteredDevices = devices.filter(dev => {
     const matchesSearch = 
-      dev.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      dev.ip.includes(searchTerm) ||
-      dev.location.toLowerCase().includes(searchTerm.toLowerCase());
+      (dev.name && dev.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (dev.ip && dev.ip.includes(searchTerm)) ||
+      (dev.location && dev.location.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesType = typeFilter === '' || dev.type === typeFilter;
     const matchesStatus = statusFilter === '' || dev.status === statusFilter;
 
     return matchesSearch && matchesType && matchesStatus;
   });
+
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -147,15 +113,24 @@ export const NetworkMonitoring = () => {
             Real-time ping latency, connectivity status, and switch interface port telemetry.
           </p>
         </div>
-        <button 
-          className="btn btn-secondary" 
-          onClick={triggerRefresh}
-          disabled={isRefreshing}
-        >
-          <RefreshCw size={16} className={isRefreshing ? 'spin-anim' : ''} />
-          <span>{isRefreshing ? 'Pinging Devices...' : 'Refresh Network'}</span>
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {isWriteAllowed && (
+            <button className="btn btn-primary" onClick={() => setActiveForm('add')}>
+              <Plus size={16} />
+              <span>Add Node</span>
+            </button>
+          )}
+          <button 
+            className="btn btn-secondary" 
+            onClick={triggerRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw size={16} className={isRefreshing ? 'spin-anim' : ''} />
+            <span>{isRefreshing ? 'Pinging Devices...' : 'Refresh Network'}</span>
+          </button>
+        </div>
       </div>
+
 
       {/* Network Alert Banner if any device is Offline/Degraded */}
       {devices.some(d => d.status === 'Offline' || d.status === 'Degraded') && (
@@ -396,6 +371,104 @@ export const NetworkMonitoring = () => {
           </div>
         </div>
       )}
+
+      {/* REGISTER NODE DRAWER */}
+
+      {activeForm === 'add' && (
+        <div className="drawer-overlay" onClick={() => setActiveForm(null)}>
+          <div className="drawer" onClick={(e) => e.stopPropagation()}>
+            <form onSubmit={handleRegisterNode} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <div className="drawer-header">
+                <h3>Register Network Node</h3>
+                <button type="button" className="nav-btn" onClick={() => setActiveForm(null)} aria-label="Close drawer"><X size={18} /></button>
+              </div>
+              <div className="drawer-body">
+                <div className="form-group">
+                  <label htmlFor="node-name">Device / Node Name *</label>
+                  <input
+                    id="node-name"
+                    type="text"
+                    required
+                    className="input-field"
+                    placeholder="e.g. Adama Zonal Router"
+                    value={newNode.name}
+                    onChange={(e) => setNewNode(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="node-ip">IP Address *</label>
+                  <input
+                    id="node-ip"
+                    type="text"
+                    required
+                    className="input-field"
+                    placeholder="e.g. 10.20.1.1"
+                    value={newNode.ipAddress}
+                    onChange={(e) => setNewNode(prev => ({ ...prev, ipAddress: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="node-mac">MAC Address</label>
+                  <input
+                    id="node-mac"
+                    type="text"
+                    className="input-field"
+                    placeholder="e.g. 00:1B:44:11:3A:B7"
+                    value={newNode.macAddress}
+                    onChange={(e) => setNewNode(prev => ({ ...prev, macAddress: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="node-type">Node Device Type</label>
+                  <select
+                    id="node-type"
+                    className="input-field"
+                    value={newNode.type}
+                    onChange={(e) => setNewNode(prev => ({ ...prev, type: e.target.value }))}
+                  >
+                    <option value="Router">Router</option>
+                    <option value="Core Switch">Core Switch</option>
+                    <option value="Firewall">Firewall</option>
+                    <option value="Server">Server</option>
+                    <option value="Access Point">Access Point</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="node-loc">Location Room</label>
+                  <input
+                    id="node-loc"
+                    type="text"
+                    className="input-field"
+                    placeholder="e.g. Server Room Bay A"
+                    value={newNode.location}
+                    onChange={(e) => setNewNode(prev => ({ ...prev, location: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="node-zone">Zone Branch</label>
+                  <select
+                    id="node-zone"
+                    className="input-field"
+                    value={newNode.zone}
+                    onChange={(e) => setNewNode(prev => ({ ...prev, zone: e.target.value }))}
+                  >
+                    <option value="Headquarters">Headquarters</option>
+                    <option value="East Shewa Zone">East Shewa Zone</option>
+                    <option value="Bale Zone">Bale Zone</option>
+                    <option value="Jimma Zone">Jimma Zone</option>
+                    <option value="West Wollega Zone">West Wollega Zone</option>
+                  </select>
+                </div>
+              </div>
+              <div className="drawer-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setActiveForm(null)}>{t('cancel')}</button>
+                <button type="submit" className="btn btn-primary">Save Node to DB</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
 
       <style>{`
         .spin-anim {

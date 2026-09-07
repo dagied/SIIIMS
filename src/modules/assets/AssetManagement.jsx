@@ -1,106 +1,66 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { api } from '../../services/api';
 import { Plus, Search, ArrowLeftRight, Trash2, Eye, X } from 'lucide-react';
 
 export const AssetManagement = () => {
   const { user, canEdit } = useAuth();
   const { t } = useLanguage();
 
-  // Mock initial assets list
-  const [assets, setAssets] = useState([
-    {
-      id: 'ast-1',
-      tag: 'OSTA-2026-001',
-      name: 'HP EliteBook 840 G8 Laptop',
-      serial: '5CG1248FGT',
-      category: 'Computers',
-      status: 'Active',
-      location: 'Adama Headquarters',
-      owner: 'Dr. Kenenisa Bekele',
-      model: 'EliteBook 840 G8',
-      purchaseDate: '2026-01-10',
-      price: '1,200 USD',
-      history: [
-        { date: '2026-01-10', action: 'Asset Registered', user: 'admin_almaz', notes: 'Initial intake registration' },
-        { date: '2026-01-12', action: 'Assigned to Executive', user: 'admin_almaz', notes: 'Deployed for executive viewer use' }
-      ]
-    },
-    {
-      id: 'ast-2',
-      tag: 'OSTA-2026-002',
-      name: 'Dell PowerEdge R740 Server',
-      serial: 'DELL-98XFGH2',
-      category: 'Servers',
-      status: 'Active',
-      location: 'HQ Data Center',
-      owner: 'Infrastructure Department',
-      model: 'PowerEdge R740',
-      purchaseDate: '2025-11-05',
-      price: '8,500 USD',
-      history: [
-        { date: '2025-11-05', action: 'Asset Registered', user: 'admin_almaz', notes: 'Server intake for virtualization rack' }
-      ]
-    },
-    {
-      id: 'ast-3',
-      tag: 'OSTA-2026-003',
-      name: 'Cisco Catalyst 9300 Switch',
-      serial: 'CSCO-SW4412',
-      category: 'Network Devices',
-      status: 'Active',
-      location: 'East Shewa Zone',
-      owner: 'Zonal ICT Desk',
-      model: 'Catalyst 9300',
-      purchaseDate: '2026-02-15',
-      price: '3,200 USD',
-      history: [
-        { date: '2026-02-15', action: 'Asset Registered', user: 'tech_chala', notes: 'Registered at central store' },
-        { date: '2026-02-20', action: 'Transferred to Zone', user: 'tech_chala', notes: 'Shipped to East Shewa Zone Office' }
-      ]
-    },
-    {
-      id: 'ast-4',
-      tag: 'OSTA-2026-004',
-      name: 'Lenovo ThinkCentre M70q Desktop',
-      serial: 'MJ09EX41',
-      category: 'Computers',
-      status: 'Transferred',
-      location: 'Bale Zone Office',
-      owner: 'Regional Staff',
-      model: 'ThinkCentre M70q',
-      purchaseDate: '2024-05-12',
-      price: '850 USD',
-      history: [
-        { date: '2024-05-12', action: 'Asset Registered', user: 'admin_almaz', notes: 'Standard office workstation setup' },
-        { date: '2026-04-10', action: 'Transferred', user: 'zone_lensa', notes: 'Moved from Adama main office to Bale' }
-      ]
-    },
-    {
-      id: 'ast-5',
-      tag: 'OSTA-2026-005',
-      name: 'Epson L3150 Wi-Fi Printer',
-      serial: 'EPS-PRNT9922',
-      category: 'Peripherals',
-      status: 'Disposed',
-      location: 'Bishoftu Desk',
-      owner: 'Finance Department',
-      model: 'L3150 EcoTank',
-      purchaseDate: '2023-08-20',
-      price: '320 USD',
-      history: [
-        { date: '2023-08-20', action: 'Asset Registered', user: 'admin_almaz', notes: 'Finance desktop printer' },
-        { date: '2026-07-01', action: 'Asset Disposed', user: 'tech_chala', notes: 'Defective printhead, cost of repairs exceeded value.' }
-      ]
+  const [assets, setAssets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [formError, setFormError] = useState('');
+  const [fetchError, setFetchError] = useState('');
+
+  const fetchAssets = async () => {
+    try {
+      setLoading(true);
+      setFetchError('');
+      const res = await api.getAssets();
+      if (res?.success && Array.isArray(res.data)) {
+        // Map API objects to frontend asset model format if needed
+        const mapped = res.data.map(a => ({
+          id: a.id,
+          tag: a.tagId || a.tag || `OSTA-${a.id}`,
+          name: a.name,
+          serial: a.serialNumber || a.serial || 'N/A',
+          category: a.category || 'Computers',
+          zone: a.zone || 'Headquarters',
+          status: a.status || 'Active',
+          location: a.location || a.zone || 'Headquarters',
+          owner: a.assignedTo || 'Unassigned',
+          model: a.model || 'Generic',
+          purchaseDate: a.purchaseDate ? new Date(a.purchaseDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          price: a.cost ? `${a.cost} USD` : 'N/A',
+          history: [
+            { date: new Date().toISOString().split('T')[0], action: 'Asset Registered', user: user?.username || 'system', notes: 'Persisted in PostgreSQL database' }
+          ]
+        }));
+        setAssets(mapped);
+      } else {
+        setAssets([]);
+        setFetchError(res?.message || 'No assets were returned from the server.');
+      }
+    } catch (err) {
+      console.warn('[AssetManagement] Failed to fetch assets from server:', err);
+      setAssets([]);
+      setFetchError(err.message || 'Failed to load assets from the server.');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchAssets();
+  }, []);
 
   // Filtering & Pagination State
   const [searchTerm, setSearchTerm] = useState('');
   const [catFilter, setCatFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 3;
+  const itemsPerPage = 5;
 
   // Selected asset for view or action drawers
   const [selectedAsset, setSelectedAsset] = useState(null);
@@ -123,16 +83,11 @@ export const AssetManagement = () => {
 
   // Filtered Assets
   const filteredAssets = assets.filter(asset => {
-    // If Zonal user, they only view assets assigned to their branch/zone or region
-    if (user?.role === 'Zonal ICT Focal Person' && !asset.location.includes(user.zone || '')) {
-      return false;
-    }
-    // Search query match
     const matchesSearch = 
-      asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      asset.serial.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      asset.tag.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      asset.owner.toLowerCase().includes(searchTerm.toLowerCase());
+      (asset.name && asset.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (asset.serial && asset.serial.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (asset.tag && asset.tag.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (asset.owner && asset.owner.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesCat = catFilter === '' || asset.category === catFilter;
     const matchesStatus = statusFilter === '' || asset.status === statusFilter;
@@ -141,42 +96,45 @@ export const AssetManagement = () => {
   });
 
   // Paginated assets
-  const totalPages = Math.ceil(filteredAssets.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredAssets.length / itemsPerPage) || 1;
   const paginatedAssets = filteredAssets.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  const handleRegisterSubmit = (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (!newAsset.name || !newAsset.serial) return;
+    setFormError('');
+    if (!newAsset.name.trim()) {
+      setFormError('Asset name is required.');
+      return;
+    }
 
-    const newId = `ast-${assets.length + 1}`;
-    const newTag = `OSTA-2026-0${assets.length + 1}`;
-    const today = new Date().toISOString().split('T')[0];
+    try {
+      const payload = {
+        name: newAsset.name,
+        serialNumber: newAsset.serial || `SN-${Date.now()}`,
+        category: newAsset.category || 'Computers',
+        location: newAsset.location || 'Headquarters',
+        assignedTo: newAsset.owner || 'Unassigned',
+        model: newAsset.model || 'Generic',
+        cost: newAsset.price ? parseFloat(newAsset.price) : 0,
+        status: 'In Store',
+        condition: 'Good'
+      };
 
-    const assetEntry = {
-      id: newId,
-      tag: newTag,
-      name: newAsset.name,
-      serial: newAsset.serial,
-      category: newAsset.category,
-      status: 'Active',
-      location: newAsset.location || 'Adama Headquarters',
-      owner: newAsset.owner || 'Unassigned',
-      model: newAsset.model || 'Generic Model',
-      purchaseDate: today,
-      price: newAsset.price || 'N/A',
-      history: [
-        { date: today, action: 'Asset Registered', user: user?.username || 'system', notes: 'Initial intake registration' }
-      ]
-    };
-
-    setAssets(prev => [assetEntry, ...prev]);
-    setActiveForm(null);
-    // Reset form
-    setNewAsset({ name: '', serial: '', category: 'Computers', location: '', owner: '', model: '', price: '' });
+      const res = await api.createAsset(payload);
+      if (res && res.success) {
+        setActiveForm(null);
+        setNewAsset({ name: '', serial: '', category: 'Computers', location: '', owner: '', model: '', price: '' });
+        await fetchAssets();
+      }
+    } catch (err) {
+      console.error('[AssetManagement] Failed to register asset:', err);
+      setFormError(err.message || 'Failed to register asset.');
+    }
   };
+
 
   const handleTransferSubmit = (e) => {
     e.preventDefault();
@@ -315,7 +273,15 @@ export const AssetManagement = () => {
 
       {/* Asset Table */}
       <div className="table-container">
-        <table>
+        {loading ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            Loading assets from database...
+          </div>
+        ) : fetchError ? (
+          <div className="badge badge-danger" style={{ display: 'block', padding: '1rem', whiteSpace: 'normal' }}>
+            {fetchError}
+          </div>
+        ) : <table>
           <thead>
             <tr>
               <th>{t('asset_tag')}</th>
@@ -391,7 +357,7 @@ export const AssetManagement = () => {
               ))
             )}
           </tbody>
-        </table>
+        </table>}
       </div>
 
       {/* Pagination controls */}
@@ -495,6 +461,11 @@ export const AssetManagement = () => {
                 <button type="button" className="nav-btn" onClick={() => setActiveForm(null)} aria-label="Close drawer"><X size={18} /></button>
               </div>
               <div className="drawer-body">
+                {formError && (
+                  <div className="badge badge-danger" style={{ display: 'block', padding: '0.75rem 1rem', marginBottom: '1rem', whiteSpace: 'normal' }}>
+                    {formError}
+                  </div>
+                )}
                 <div className="form-group">
                   <label htmlFor="reg-name">{t('asset_name')} *</label>
                   <input

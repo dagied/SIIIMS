@@ -26,18 +26,27 @@ export const Login = () => {
     }
 
     try {
-      await login(role, username);
+      const loggedIn = await login(role, username, password);
+      if (!loggedIn) {
+        setError('Authentication failed. Please check your credentials.');
+      }
     } catch (err) {
-      setError('Authentication failed. Please try again.');
+      setError(err.message || 'Authentication failed. Please try again.');
     }
   };
 
-  const handleQuickSelect = (selectedRole) => {
+  const handleQuickSelect = async (selectedRole) => {
     setRole(selectedRole);
-    // Autofill mock credentials
     const cleanUsername = selectedRole.toLowerCase().replace(/[^a-z]/g, '_');
     setUsername(cleanUsername);
     setPassword('Password123');
+    setError('');
+
+    try {
+      await login(selectedRole, cleanUsername, 'Password123');
+    } catch (err) {
+      setError(err.message || 'Authentication failed. Please try again.');
+    }
   };
 
   const roleList = [
@@ -142,6 +151,7 @@ export const Login = () => {
             {roleList.map((r) => (
               <button
                 key={r}
+                type="button"
                 onClick={() => handleQuickSelect(r)}
                 className="btn btn-secondary"
                 style={{ justifyContent: 'flex-start', padding: '0.4rem 0.75rem', fontSize: '0.75rem', textAlign: 'left' }}

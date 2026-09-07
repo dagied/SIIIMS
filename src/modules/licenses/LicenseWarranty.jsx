@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { api } from '../../services/api';
 import { ShieldAlert, Search, Plus, Calendar, AlertTriangle, X } from 'lucide-react';
 
 export const LicenseWarranty = () => {
@@ -9,50 +10,37 @@ export const LicenseWarranty = () => {
 
   const [selectedContract, setSelectedContract] = useState(null);
   const [activeForm, setActiveForm] = useState(null);
+  const [contracts, setContracts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock list of licenses and warranties
-  const [contracts, setContracts] = useState([
-    {
-      id: 'lic-1',
-      name: 'Windows Server 2022 Core Licenses',
-      serialOrKey: 'W269N-WFGWX-YVC9B-4J6C9-T83GX',
-      type: 'Software License',
-      expiryDate: '2026-08-05', // Very soon
-      totalSeats: 32,
-      assignedSeats: 28,
-      vendorName: 'Microsoft East Africa',
-      remarks: 'Core OS licenses for HQ Virtualization clusters.'
-    },
-    {
-      id: 'lic-2',
-      name: 'Kaspersky Endpoint Security for Business',
-      serialOrKey: 'KS-EPSEC-99221-OSTA',
-      type: 'Software License',
-      expiryDate: '2026-10-15', // ~2.5 months
-      totalSeats: 500,
-      assignedSeats: 480,
-      vendorName: 'Security Sol Ltd',
-      remarks: 'Enterprise antivirus node deployment licenses.'
-    },
-    {
-      id: 'lic-3',
-      name: 'Dell PowerEdge R740 Server Gold Warranty',
-      serialOrKey: 'DELL-WARR-98XFGH2',
-      type: 'Hardware Warranty',
-      expiryDate: '2026-08-12', // Very soon
-      vendorName: 'Dell Technologies HQ',
-      remarks: '24/7 ProSupport Next Business Day Onsite service.'
-    },
-    {
-      id: 'lic-4',
-      name: 'Fortinet FortiGate 100F Firewall License',
-      serialOrKey: 'FG-100F-LIC-88221',
-      type: 'Software License',
-      expiryDate: '2027-05-30', // Long term
-      vendorName: 'CyberSec East Africa',
-      remarks: 'Unified Threat Protection (UTP) network security subscription.'
+  const fetchLicenses = async () => {
+    try {
+      setLoading(true);
+      const res = await api.getLicenses();
+      if (res && res.data) {
+        const mapped = res.data.map(l => ({
+          id: l.id,
+          name: l.softwareName,
+          serialOrKey: l.licenseKey || 'N/A',
+          type: l.type || 'Software License',
+          expiryDate: l.expiryDate ? new Date(l.expiryDate).toISOString().split('T')[0] : '2027-12-31',
+          totalSeats: l.seatsTotal || 50,
+          assignedSeats: l.seatsUsed || 0,
+          vendorName: l.vendor || 'General Vendor',
+          remarks: `Cost: $${l.cost || 0} USD`
+        }));
+        setContracts(mapped);
+      }
+    } catch (err) {
+      console.warn('[LicenseWarranty] Failed to fetch licenses:', err);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchLicenses();
+  }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -87,37 +75,43 @@ export const LicenseWarranty = () => {
     return { label: 'Active', class: 'badge-success', style: { color: 'var(--status-success)' } };
   };
 
-  const handleRegisterSubmit = (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     if (!newContract.name || !newContract.expiryDate) return;
 
-    const entry = {
-      id: `lic-${contracts.length + 1}`,
-      name: newContract.name,
-      serialOrKey: newContract.serialOrKey || 'N/A',
-      type: newContract.type,
-      expiryDate: newContract.expiryDate,
-      totalSeats: Number(newContract.totalSeats),
-      assignedSeats: Number(newContract.assignedSeats),
-      vendorName: newContract.vendorName || 'General Store',
-      remarks: newContract.remarks
-    };
+    try {
+      const payload = {
+        softwareName: newContract.name,
+        vendor: newContract.vendorName || 'Microsoft',
+        licenseKey: newContract.serialOrKey || `LIC-${Date.now()}`,
+        type: newContract.type || 'Subscription',
+        seatsTotal: Number(newContract.totalSeats) || 10,
+        expiryDate: newContract.expiryDate,
+        cost: 0
+      };
 
-    setContracts(prev => [entry, ...prev]);
-    setActiveForm(null);
-    setNewContract({ name: '', serialOrKey: '', type: 'Software License', expiryDate: '', totalSeats: 1, assignedSeats: 0, vendorName: '', remarks: '' });
+      const res = await api.createLicense(payload);
+      if (res && res.success) {
+        setActiveForm(null);
+        setNewContract({ name: '', serialOrKey: '', type: 'Software License', expiryDate: '', totalSeats: 1, assignedSeats: 0, vendorName: '', remarks: '' });
+        await fetchLicenses();
+      }
+    } catch (err) {
+      console.error('[LicenseWarranty] Failed to register license:', err);
+    }
   };
 
   const filteredContracts = contracts.filter(con => {
     const matchesSearch = 
-      con.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      con.serialOrKey.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      con.vendorName.toLowerCase().includes(searchTerm.toLowerCase());
+      (con.name && con.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (con.serialOrKey && con.serialOrKey.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (con.vendorName && con.vendorName.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesType = typeFilter === '' || con.type === typeFilter;
 
     return matchesSearch && matchesType;
   });
+
 
   const isWriteAllowed = canEdit('licenses');
 

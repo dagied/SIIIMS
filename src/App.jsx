@@ -15,12 +15,17 @@ import { LicenseWarranty } from './modules/licenses/LicenseWarranty';
 import { VendorContract } from './modules/vendors/VendorContract';
 import { UserManagement } from './modules/users/UserManagement';
 import { AuditLog } from './modules/audit/AuditLog';
+import { Announcements } from './modules/announcements/Announcements';
 import './App.css';
 
 // App content wrapper that listens to Auth state
 const AppContent = () => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, hasAccess } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const AccessRoute = ({ module, children }) => {
+    return hasAccess(module) ? children : <Navigate to="/dashboard" replace />;
+  };
 
   if (isLoading) {
     return (
@@ -62,14 +67,15 @@ const AppContent = () => {
           <Routes>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/assets" element={<AssetManagement />} />
-            <Route path="/network" element={<NetworkMonitoring />} />
+            <Route path="/network" element={<AccessRoute module="network"><NetworkMonitoring /></AccessRoute>} />
             <Route path="/systems" element={<SystemsRegistry />} />
-            <Route path="/maintenance" element={<MaintenanceManagement />} />
+            <Route path="/maintenance" element={<AccessRoute module="maintenance"><MaintenanceManagement /></AccessRoute>} />
             <Route path="/helpdesk" element={<HelpdeskTicketing />} />
-            <Route path="/licenses" element={<LicenseWarranty />} />
-            <Route path="/vendors" element={<VendorContract />} />
-            <Route path="/users" element={<UserManagement />} />
-            <Route path="/audit-logs" element={<AuditLog />} />
+            <Route path="/licenses" element={<AccessRoute module="licenses"><LicenseWarranty /></AccessRoute>} />
+            <Route path="/vendors" element={<AccessRoute module="vendors"><VendorContract /></AccessRoute>} />
+            <Route path="/users" element={<AccessRoute module="users"><UserManagement /></AccessRoute>} />
+            <Route path="/audit-logs" element={<AccessRoute module="audit_logs"><AuditLog /></AccessRoute>} />
+            <Route path="/announcements" element={<AccessRoute module="announcements"><Announcements /></AccessRoute>} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

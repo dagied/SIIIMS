@@ -13,6 +13,7 @@ import {
   Handshake,
   Users,
   FileSpreadsheet,
+  Megaphone,
   LogOut,
   X
 } from 'lucide-react';
@@ -34,6 +35,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
     { id: 'vendors', path: '/vendors', label: t('vendors'), icon: Handshake },
     { id: 'users', path: '/users', label: t('users'), icon: Users },
     { id: 'audit_logs', path: '/audit-logs', label: t('audit_logs'), icon: FileSpreadsheet },
+    { id: 'announcements', path: '/announcements', label: 'Announcements', icon: Megaphone },
   ];
 
   // Filter menu items by permissions

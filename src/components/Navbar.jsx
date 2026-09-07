@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Menu, Sun, Moon, Bell, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../services/api';
 
 export const Navbar = ({ onMenuToggle }) => {
   const { user } = useAuth();
@@ -14,32 +15,7 @@ export const Navbar = ({ onMenuToggle }) => {
   });
 
   const [showNotiDropdown, setShowNotiDropdown] = useState(false);
-  const [notifications, setNotifications] = useState([
-    {
-      id: 'n-1',
-      title: 'Warranty Expiry Alert',
-      desc: 'Dell PowerEdge R740 Server warranty expires in 12 days!',
-      time: '2 hours ago',
-      unread: true,
-      link: '/licenses'
-    },
-    {
-      id: 'n-2',
-      title: 'New Corrective maintenance Logged',
-      desc: 'Switch port malfunction at East Shewa Zone resolved.',
-      time: '4 hours ago',
-      unread: true,
-      link: '/maintenance'
-    },
-    {
-      id: 'n-3',
-      title: 'Ticket Assigned to You',
-      desc: 'Ticket #402: "Unable to connect to OSTA core ERP" assigned.',
-      time: '1 day ago',
-      unread: false,
-      link: '/helpdesk'
-    }
-  ]);
+  const [notifications, setNotifications] = useState([]);
 
   const notiRef = useRef(null);
 
@@ -60,6 +36,20 @@ export const Navbar = ({ onMenuToggle }) => {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    api.getNotifications()
+      .then((res) => setNotifications((res.data || []).map((notification) => ({
+        id: notification.id,
+        title: notification.title,
+        desc: notification.message,
+        time: new Date(notification.createdAt).toLocaleString(),
+        unread: !notification.isRead,
+        link: notification.link || '/helpdesk'
+      }))))
+      .catch((error) => console.warn('[Navbar] Failed to load notifications:', error.message));
+  }, [user]);
+
   const toggleTheme = () => {
     setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
   };
@@ -68,11 +58,13 @@ export const Navbar = ({ onMenuToggle }) => {
     setLanguage(e.target.value);
   };
 
-  const markAllRead = () => {
+  const markAllRead = async () => {
+    await api.markAllNotificationsRead();
     setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
   };
 
-  const handleNotiClick = (noti) => {
+  const handleNotiClick = async (noti) => {
+    if (noti.unread) await api.markNotificationRead(noti.id);
     setNotifications(prev => prev.map(n => n.id === noti.id ? { ...n, unread: false } : n));
     setShowNotiDropdown(false);
     navigate(noti.link);

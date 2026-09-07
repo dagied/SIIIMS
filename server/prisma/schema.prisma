@@ -1,0 +1,195 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  role         String // System Admin, ICT Technician, Zonal ICT Focal Person, Department Staff/End User, Management/Executive Viewer
+  zone         String?
+  department   String?
+  status       String   @default("Active") // Active, Inactive, Suspended
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignedTickets  HelpdeskTicket[]  @relation("AssignedTickets")
+  requestedTickets HelpdeskTicket[]  @relation("RequestedTickets")
+  maintenanceTasks MaintenanceTask[] @relation("AssignedMaintenance")
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+
+  @@map("users")
+}
+
+model Asset {
+  id           String    @id @default(uuid())
+  tagId        String    @unique
+  name         String
+  category     String // Workstation, Laptop, Server, Network Device, Printer, UPS
+  serialNumber String    @unique
+  manufacturer String
+  model        String
+  assignedTo   String?
+  zone         String
+  location     String
+  status       String    @default("In Use") // In Use, In Store, Under Maintenance, Decommissioned
+  condition    String    @default("Good") // Excellent, Good, Fair, Poor
+  purchaseDate DateTime?
+  cost         Float?
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  maintenanceTasks MaintenanceTask[]
+
+  @@map("assets")
+}
+
+model NetworkNode {
+  id         String   @id @default(uuid())
+  name       String
+  type       String // Router, Core Switch, Firewall, Server, Access Point, Gateway
+  ipAddress  String   @unique
+  macAddress String?
+  location   String
+  zone       String
+  status     String   @default("Online") // Online, Warning, Offline, Maintenance
+  latency    Int      @default(5) // latency in ms
+  uptime     Float    @default(99.9) // percentage
+  lastPing   DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("network_nodes")
+}
+
+model SystemRegistry {
+  id          String   @id @default(uuid())
+  systemCode  String   @unique
+  name        String
+  category    String // Enterprise ERP, HRMS, Portal, Database, Identity Provider
+  version     String
+  hosting     String // On-Premise, Data Center, Cloud, Hybrid
+  status      String   @default("Operational") // Operational, Degraded, Outage, Maintenance
+  ownerDept   String
+  techStack   String
+  lastUpdated DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@map("system_registries")
+}
+
+model MaintenanceTask {
+  id            String    @id @default(uuid())
+  taskNo        String    @unique
+  title         String
+  assetId       String?
+  asset         Asset?    @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  scheduledDate DateTime
+  completedDate DateTime?
+  type          String // Preventive, Corrective, Upgrade, Inspection
+  priority      String    @default("Medium") // Low, Medium, High, Critical
+  status        String    @default("Scheduled") // Scheduled, In Progress, Completed, Cancelled
+  technicianId  String?
+  technician    User?     @relation("AssignedMaintenance", fields: [technicianId], references: [id], onDelete: SetNull)
+  zone          String
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("maintenance_tasks")
+}
+
+// server/prisma/schema.prisma
+model HelpdeskTicket {
+  id          String    @id @default(uuid())
+  ticketNo    String    @unique
+  title       String
+  description String
+  priority    String    @default("Medium") // Low, Medium, High, Critical
+  status      String    @default("Open") // Open, In Progress, Pending Vendor, Resolved, Closed
+  category    String // Hardware, Software, Network, Access & Auth, Infrastructure
+  zone        String
+  timeline    Json      @default("[]")
+  requesterId String?
+  requester   User?     @relation("RequestedTickets", fields: [requesterId], references: [id], onDelete: SetNull)
+  assigneeId  String?
+  assignee    User?     @relation("AssignedTickets", fields: [assigneeId], references: [id], onDelete: SetNull)
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("helpdesk_tickets")
+}
+
+model SoftwareLicense {
+  id           String   @id @default(uuid())
+  softwareName String
+  vendor       String
+  licenseKey   String
+  type         String // Subscription, Enterprise, Perpetual, OEM
+  seatsTotal   Int
+  seatsUsed    Int      @default(0)
+  purchaseDate DateTime
+  expiryDate   DateTime
+  cost         Float
+  status       String   @default("Active") // Active, Expiring Soon, Expired
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("software_licenses")
+}
+
+model VendorContract {
+  id            String   @id @default(uuid())
+  vendorName    String
+  contactPerson String
+  contactEmail  String
+  contactPhone  String
+  serviceType   String // Network ISP, Hardware Maintenance, Software Support, Cloud Hosting
+  slaLevel      String // 99.9% Uptime 24/7, 4-Hour Onsite Response, Next Business Day
+  contractStart DateTime
+  contractEnd   DateTime
+  annualCost    Float
+  status        String   @default("Active") // Active, Renewal Due, Terminated
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("vendor_contracts")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userRole  String
+  action    String // LOGIN, CREATE_ASSET, UPDATE_TICKET, DELETE_USER, etc.
+  module    String // Auth, Assets, Network, Maintenance, Helpdesk, Users, System
+  details   String
+  ipAddress String   @default("127.0.0.1")
+
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  link      String   @default("/helpdesk")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
