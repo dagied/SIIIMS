@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { KeyRound, Save, UserRound } from 'lucide-react';
+import { Eye, EyeOff, KeyRound, Save, UserRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { email as validateEmail, minLength, required, firstError } from '../../utils/validation';
@@ -11,6 +11,8 @@ export const Profile = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -19,6 +21,7 @@ export const Profile = () => {
     const validationError = firstError(
       required(name, 'Full name'),
       validateEmail(email, 'Email address'),
+      newPassword ? required(currentPassword, 'Current password') : '',
       newPassword ? minLength(newPassword, 8, 'New password') : '',
       newPassword && newPassword !== confirmPassword ? 'New passwords do not match.' : ''
     );
@@ -90,11 +93,21 @@ export const Profile = () => {
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Leave these fields blank to keep your current password.</p>
           <div className="form-group">
             <label htmlFor="profile-current-password">Current Password</label>
-            <input id="profile-current-password" type="password" className="input-field" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" />
+            <div style={{ position: 'relative' }}>
+              <input id="profile-current-password" type={showCurrentPassword ? 'text' : 'password'} className="input-field" style={{ paddingRight: '2.75rem' }} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" />
+              <button type="button" className="nav-btn" onClick={() => setShowCurrentPassword(prev => !prev)} aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'} title={showCurrentPassword ? 'Hide current password' : 'Show current password'} style={{ position: 'absolute', right: '0.35rem', top: '50%', transform: 'translateY(-50%)' }}>
+                {showCurrentPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </div>
           </div>
           <div className="form-group">
             <label htmlFor="profile-new-password">New Password</label>
-            <input id="profile-new-password" type="password" className="input-field" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} autoComplete="new-password" />
+            <div style={{ position: 'relative' }}>
+              <input id="profile-new-password" type={showNewPassword ? 'text' : 'password'} className="input-field" style={{ paddingRight: '2.75rem' }} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} autoComplete="new-password" />
+              <button type="button" className="nav-btn" onClick={() => setShowNewPassword(prev => !prev)} aria-label={showNewPassword ? 'Hide new password' : 'Show new password'} title={showNewPassword ? 'Hide new password' : 'Show new password'} style={{ position: 'absolute', right: '0.35rem', top: '50%', transform: 'translateY(-50%)' }}>
+                {showNewPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </div>
           </div>
           <div className="form-group">
             <label htmlFor="profile-confirm-password">Confirm New Password</label>

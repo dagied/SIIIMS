@@ -24,8 +24,15 @@ const PORT = process.env.PORT || 5000;
 // Connect Database
 connectDB();
 
+// CORS Configuration - Allow your frontend
+const corsOptions = {
+  origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['http://localhost:5173'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // API Health Check
@@ -34,6 +41,7 @@ app.get('/api/health', (req, res) => {
     status: 'UP',
     system: 'SIIIMS Node.js Backend API',
     database: 'PostgreSQL',
+    environment: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString(),
     version: '1.0.0'
   });
@@ -52,7 +60,6 @@ app.use('/api/audit-logs', auditRoutes);
 app.use('/api/systems', systemRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
-
 // 404 Route Handler
 app.use((req, res) => {
   res.status(404).json({ message: `API Endpoint ${req.method} ${req.url} not found` });
@@ -65,6 +72,15 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`=======================================================`);
   console.log(`  SIIIMS Node.js Backend Server running on port ${PORT}`);
+  console.log(`  Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`  Health check: http://localhost:${PORT}/api/health`);
   console.log(`=======================================================`);
 });
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, closing server...');
+  process.exit(0);
+});
+
+export default app;

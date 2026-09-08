@@ -59,6 +59,10 @@ export const login = async (req, res, next) => {
       }
     }
 
+    if (userObj.passwordHash && !(await bcrypt.compare(password || '', userObj.passwordHash))) {
+      return res.status(401).json({ success: false, message: 'Invalid username or password.' });
+    }
+
     const tokenPayload = {
       id: userObj.id,
       username: userObj.username,
@@ -119,8 +123,11 @@ export const updateProfile = async (req, res, next) => {
     if (!name?.trim() || !email?.trim()) {
       return res.status(400).json({ success: false, message: 'Name and email are required.' });
     }
-    if (newPassword && (!currentPassword || !(await bcrypt.compare(currentPassword, user.passwordHash)))) {
-      return res.status(400).json({ success: false, message: 'Current password is incorrect.' });
+    if (newPassword && !currentPassword) {
+      return res.status(400).json({ success: false, message: 'Current password is required to change your password.' });
+    }
+    if (newPassword && !(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect. Enter the password you use to sign in.' });
     }
     if (newPassword && newPassword.length < 8) {
       return res.status(400).json({ success: false, message: 'New password must be at least 8 characters.' });

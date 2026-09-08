@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
+const demoPasswordHash = bcrypt.hashSync('Password123', 10);
 
 async function main() {
   console.log(' Seeding PostgreSQL database with initial SIIIMS records...');
@@ -8,13 +10,13 @@ async function main() {
   // 1. Users
   const adminUser = await prisma.user.upsert({
     where: { username: 'admin_almaz' },
-    update: {},
+    update: { passwordHash: demoPasswordHash, status: 'Active' },
     create: {
       id: 'usr-001',
       name: 'Almaz Tolosa',
       username: 'admin_almaz',
       email: 'almaz.t@osta.gov.et',
-      passwordHash: '$2a$10$wN1r...hashed_admin_pass',
+      passwordHash: demoPasswordHash,
       role: 'System Admin',
       zone: 'Headquarters',
       department: 'ICT Directorate',
@@ -24,13 +26,13 @@ async function main() {
 
   const techUser = await prisma.user.upsert({
     where: { username: 'tech_chala' },
-    update: {},
+    update: { passwordHash: demoPasswordHash, status: 'Active' },
     create: {
       id: 'usr-002',
       name: 'Chala Gemechu',
       username: 'tech_chala',
       email: 'chala.g@osta.gov.et',
-      passwordHash: '$2a$10$wN1r...hashed_tech_pass',
+      passwordHash: demoPasswordHash,
       role: 'ICT Technician',
       zone: 'Headquarters',
       department: 'Infrastructure Support',
@@ -40,16 +42,48 @@ async function main() {
 
   const zoneUser = await prisma.user.upsert({
     where: { username: 'zone_lensa' },
-    update: {},
+    update: { passwordHash: demoPasswordHash, status: 'Active' },
     create: {
       id: 'usr-003',
       name: 'Lensa Kebede',
       username: 'zone_lensa',
       email: 'lensa.k@osta.gov.et',
-      passwordHash: '$2a$10$wN1r...hashed_zone_pass',
+      passwordHash: demoPasswordHash,
       role: 'Zonal ICT Focal Person',
       zone: 'East Shewa Zone',
       department: 'Regional Operations',
+      status: 'Active'
+    }
+  });
+
+  await prisma.user.upsert({
+    where: { username: 'department_staff_end_user' },
+    update: { passwordHash: demoPasswordHash, status: 'Active' },
+    create: {
+      id: 'usr-004',
+      name: 'Derartu Tulu',
+      username: 'department_staff_end_user',
+      email: 'derartu.t@osta.gov.et',
+      passwordHash: demoPasswordHash,
+      role: 'Department Staff/End User',
+      zone: 'Headquarters',
+      department: 'General',
+      status: 'Active'
+    }
+  });
+
+  await prisma.user.upsert({
+    where: { username: 'management_executive_viewer' },
+    update: { passwordHash: demoPasswordHash, status: 'Active' },
+    create: {
+      id: 'usr-005',
+      name: 'Dr. Kenenisa Bekele',
+      username: 'management_executive_viewer',
+      email: 'kenenisa.b@osta.gov.et',
+      passwordHash: demoPasswordHash,
+      role: 'Management/Executive Viewer',
+      zone: 'Headquarters',
+      department: 'Executive Office',
       status: 'Active'
     }
   });

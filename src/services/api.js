@@ -64,7 +64,7 @@ export const api = {
 
   // Helpdesk Tickets
   getTickets: () => request('/helpdesk'),
-  getHelpdeskTechnicians: (category = '') => request(`/helpdesk/technicians${category ? `?category=${encodeURIComponent(category)}` : ''}`),
+  getHelpdeskTechnicians: () => request('/helpdesk/technicians'),
   notifyTicketAssignee: (id, message) => request(`/helpdesk/${id}/notify`, {
     method: 'POST',
     body: JSON.stringify({ message })
