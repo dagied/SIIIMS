@@ -5,6 +5,15 @@ import { api } from '../../services/api';
 import { minLength, positiveNumber, required, firstError } from '../../utils/validation';
 import { Plus, Search, ArrowLeftRight, RefreshCw, Trash2, Eye, X } from 'lucide-react';
 
+const ZONE_OPTIONS = [
+  'East Shewa Zone',
+  'Bale Zone',
+  'Jimma Zone',
+  'West Wollega Zone'
+];
+
+const ASSET_LOCATIONS = ['Headquarters', ...ZONE_OPTIONS];
+
 export const AssetManagement = () => {
   const { user, canEdit } = useAuth();
   const { t } = useLanguage();
@@ -72,7 +81,7 @@ export const AssetManagement = () => {
     name: '',
     serial: '',
     category: 'Computers',
-    location: '',
+    location: 'Headquarters',
     owner: '',
     model: '',
     price: ''
@@ -123,7 +132,8 @@ export const AssetManagement = () => {
         name: newAsset.name,
         serialNumber: newAsset.serial || `SN-${Date.now()}`,
         category: newAsset.category || 'Computers',
-        location: newAsset.location || 'Headquarters',
+        location: newAsset.location,
+        zone: newAsset.location,
         assignedTo: newAsset.owner || 'Unassigned',
         model: newAsset.model || 'Generic',
         cost: newAsset.price ? parseFloat(newAsset.price) : 0,
@@ -134,13 +144,22 @@ export const AssetManagement = () => {
       const res = await api.createAsset(payload);
       if (res && res.success) {
         setActiveForm(null);
-        setNewAsset({ name: '', serial: '', category: 'Computers', location: '', owner: '', model: '', price: '' });
+        setNewAsset({ name: '', serial: '', category: 'Computers', location: 'Headquarters', owner: '', model: '', price: '' });
         await fetchAssets();
       }
     } catch (err) {
       console.error('[AssetManagement] Failed to register asset:', err);
       setFormError(err.message || 'Failed to register asset.');
     }
+  };
+
+  const handleRegisterClick = () => {
+    setNewAsset(prev => ({
+      ...prev,
+      location: user?.role === 'Zonal ICT Focal Person' ? user.zone : 'Headquarters'
+    }));
+    setActiveForm('register');
+    setSelectedAsset(null);
   };
 
 
@@ -248,7 +267,7 @@ export const AssetManagement = () => {
           </p>
         </div>
         {isWriteAllowed && (
-          <button className="btn btn-primary" onClick={() => { setActiveForm('register'); setSelectedAsset(null); }}>
+          <button className="btn btn-primary" onClick={handleRegisterClick}>
             <Plus size={18} />
             <span>{t('asset_register')}</span>
           </button>
@@ -570,14 +589,18 @@ export const AssetManagement = () => {
                 </div>
                 <div className="form-group">
                   <label htmlFor="reg-loc">{t('asset_location')}</label>
-                  <input
+                  <select
                     id="reg-loc"
-                    type="text"
                     className="input-field"
-                    placeholder="e.g. Adama Headquarters"
                     value={newAsset.location}
                     onChange={(e) => setNewAsset(prev => ({ ...prev, location: e.target.value }))}
-                  />
+                  >
+                    {ASSET_LOCATIONS
+                      .filter(location => user?.role !== 'Zonal ICT Focal Person' || location === user.zone)
+                      .map(location => (
+                        <option key={location} value={location}>{location}</option>
+                      ))}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label htmlFor="reg-owner">Current Owner / Assigned User</label>
@@ -631,15 +654,18 @@ export const AssetManagement = () => {
 
                 <div className="form-group">
                   <label htmlFor="trn-loc">Target Location / Zone Branch *</label>
-                  <input
+                  <select
                     id="trn-loc"
-                    type="text"
                     required
                     className="input-field"
-                    placeholder="e.g. Jimma Zonal Branch"
                     value={transferTarget.location}
                     onChange={(e) => setTransferTarget(prev => ({ ...prev, location: e.target.value }))}
-                  />
+                  >
+                    <option value="">Select target zone...</option>
+                    {ZONE_OPTIONS.map(zone => (
+                      <option key={zone} value={zone}>{zone}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label htmlFor="trn-owner">Target Owner / Assigned Person</label>

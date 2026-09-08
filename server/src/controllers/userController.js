@@ -1,5 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '../config/db.js';
+
+const USER_LOCATIONS = ['Headquarters', 'East Shewa Zone', 'Bale Zone', 'Jimma Zone', 'West Wollega Zone'];
 import { sendWelcomeEmail } from '../utils/emailService.js';
 
 /**
@@ -85,6 +87,10 @@ export const createUser = async (req, res, next) => {
 
     if (role === 'ICT Technician' && !['Software Technician', 'Hardware Technician', 'Network Technician'].includes(technicianType)) {
       return res.status(400).json({ success: false, message: 'Select a valid ICT Technician specialization.' });
+    }
+
+    if (['ICT Technician', 'Zonal ICT Focal Person'].includes(role) && !USER_LOCATIONS.includes(zone)) {
+      return res.status(400).json({ success: false, message: 'Select a valid technician or focal-person location.' });
     }
 
     // Check if user with email already exists
@@ -184,6 +190,10 @@ export const updateUser = async (req, res, next) => {
 
     if (role === 'ICT Technician' && !['Software Technician', 'Hardware Technician', 'Network Technician'].includes(technicianType)) {
       return res.status(400).json({ success: false, message: 'Select a valid ICT Technician specialization.' });
+    }
+
+    if (['ICT Technician', 'Zonal ICT Focal Person'].includes(role) && !USER_LOCATIONS.includes(zone)) {
+      return res.status(400).json({ success: false, message: 'Select a valid technician or focal-person location.' });
     }
 
     const updatedUser = await prisma.user.update({

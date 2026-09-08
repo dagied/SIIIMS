@@ -5,6 +5,14 @@ import { api } from '../../services/api';
 import { email, required, firstError } from '../../utils/validation';
 import { Plus, Search, X, CheckCircle, Mail, Key, User, Trash2 } from 'lucide-react';
 
+const ZONE_OPTIONS = [
+  'Headquarters',
+  'East Shewa Zone',
+  'Bale Zone',
+  'Jimma Zone',
+  'West Wollega Zone'
+];
+
 export const UserManagement = () => {
   const { canEdit } = useAuth();
   const { t } = useLanguage();
@@ -100,7 +108,7 @@ export const UserManagement = () => {
       required(formState.name, 'Full employee name'),
       email(formState.email, 'Official email address'),
       formState.role === 'ICT Technician' ? required(formState.technicianType, 'Technician specialization') : '',
-      activeForm === 'register' && formState.role === 'Zonal ICT Focal Person' ? required(formState.zone, 'Geographic zone') : ''
+      ['ICT Technician', 'Zonal ICT Focal Person'].includes(formState.role) ? required(formState.zone, 'Work location') : ''
     );
     if (validationError) {
       setErrorMsg(validationError);
@@ -117,7 +125,7 @@ export const UserManagement = () => {
           email: formState.email,
           role: formState.role,
           technicianType: formState.role === 'ICT Technician' ? formState.technicianType : null,
-          zone: formState.role === 'Zonal ICT Focal Person' ? formState.zone : 'Headquarters',
+          zone: ['ICT Technician', 'Zonal ICT Focal Person'].includes(formState.role) ? formState.zone : 'Headquarters',
           department: 'General'
         };
 
@@ -138,7 +146,7 @@ export const UserManagement = () => {
           email: formState.email,
           role: formState.role,
           technicianType: formState.role === 'ICT Technician' ? formState.technicianType : null,
-          zone: formState.role === 'Zonal ICT Focal Person' ? formState.zone : 'Headquarters',
+          zone: ['ICT Technician', 'Zonal ICT Focal Person'].includes(formState.role) ? formState.zone : 'Headquarters',
           status: formState.status
         };
 
@@ -447,6 +455,19 @@ export const UserManagement = () => {
                       <option value="Hardware Technician">Hardware Technician</option>
                       <option value="Network Technician">Network Technician</option>
                     </select>
+                    <label htmlFor="usr-form-technician-zone">Technician Location *</label>
+                    <select
+                      id="usr-form-technician-zone"
+                      required
+                      className="input-field"
+                      value={formState.zone}
+                      onChange={(e) => setFormState(prev => ({ ...prev, zone: e.target.value }))}
+                    >
+                      <option value="">Select technician location...</option>
+                      {ZONE_OPTIONS.map(zone => (
+                        <option key={zone} value={zone}>{zone}</option>
+                      ))}
+                    </select>
                   </div>
                 )}
 
@@ -462,10 +483,9 @@ export const UserManagement = () => {
                       onChange={(e) => setFormState(prev => ({ ...prev, zone: e.target.value }))}
                     >
                       <option value="">Select Region Zone...</option>
-                      <option value="East Shewa Zone">East Shewa Zone</option>
-                      <option value="Bale Zone">Bale Zone</option>
-                      <option value="Jimma Zone">Jimma Zone</option>
-                      <option value="West Wollega Zone">West Wollega Zone</option>
+                      {ZONE_OPTIONS.filter(zone => zone !== 'Headquarters').map(zone => (
+                        <option key={zone} value={zone}>{zone}</option>
+                      ))}
                     </select>
                   </div>
                 )}
