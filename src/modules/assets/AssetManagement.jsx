@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../services/api';
+import { minLength, positiveNumber, required, firstError } from '../../utils/validation';
 import { Plus, Search, ArrowLeftRight, Trash2, Eye, X } from 'lucide-react';
 
 export const AssetManagement = () => {
@@ -105,8 +106,15 @@ export const AssetManagement = () => {
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
-    if (!newAsset.name.trim()) {
-      setFormError('Asset name is required.');
+    const validationError = firstError(
+      required(newAsset.name, 'Asset name'),
+      minLength(newAsset.name, 2, 'Asset name'),
+      required(newAsset.serial, 'Serial number'),
+      required(newAsset.location, 'Asset location'),
+      newAsset.price ? positiveNumber(newAsset.price, 'Asset cost', true) : ''
+    );
+    if (validationError) {
+      setFormError(validationError);
       return;
     }
 
@@ -138,7 +146,14 @@ export const AssetManagement = () => {
 
   const handleTransferSubmit = (e) => {
     e.preventDefault();
-    if (!selectedAsset || !transferTarget.location) return;
+    const validationError = firstError(
+      selectedAsset ? '' : 'Select an asset to transfer.',
+      required(transferTarget.location, 'Transfer location')
+    );
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
 
     const today = new Date().toISOString().split('T')[0];
     const updatedAssets = assets.map(asset => {
@@ -170,7 +185,14 @@ export const AssetManagement = () => {
 
   const handleDisposeSubmit = (e) => {
     e.preventDefault();
-    if (!selectedAsset || !disposeReason.reason) return;
+    const validationError = firstError(
+      selectedAsset ? '' : 'Select an asset to dispose.',
+      required(disposeReason.reason, 'Disposal reason')
+    );
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
 
     const today = new Date().toISOString().split('T')[0];
     const updatedAssets = assets.map(asset => {
@@ -570,6 +592,7 @@ export const AssetManagement = () => {
                 <button type="button" className="nav-btn" onClick={() => setActiveForm(null)} aria-label="Close drawer"><X size={18} /></button>
               </div>
               <div className="drawer-body">
+                {formError && <div className="badge badge-danger" style={{ display: 'block', padding: '0.75rem', marginBottom: '1rem', whiteSpace: 'normal' }}>{formError}</div>}
                 <div style={{ marginBottom: '1.5rem', backgroundColor: 'var(--bg-surface-elevated)', padding: '1rem', borderRadius: 'var(--radius-sm)' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Currently Transferring:</div>
                   <strong style={{ fontSize: '1rem' }}>{selectedAsset.name}</strong>
@@ -631,6 +654,7 @@ export const AssetManagement = () => {
                 <button type="button" className="nav-btn" onClick={() => setActiveForm(null)} aria-label="Close drawer"><X size={18} /></button>
               </div>
               <div className="drawer-body">
+                {formError && <div className="badge badge-danger" style={{ display: 'block', padding: '0.75rem', marginBottom: '1rem', whiteSpace: 'normal' }}>{formError}</div>}
                 <div style={{ marginBottom: '1.5rem', backgroundColor: 'var(--status-danger-bg)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '1rem', borderRadius: 'var(--radius-sm)' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--status-danger)' }}>Warning: Disposing of asset retired it from active records:</div>
                   <strong style={{ fontSize: '1rem' }}>{selectedAsset.name}</strong>

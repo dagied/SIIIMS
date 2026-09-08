@@ -45,7 +45,11 @@ export const AuthProvider = ({ children }) => {
         return true;
       }
     } catch (e) {
-      console.warn('Backend login request failed or backend offline. Falling back to frontend session mode:', e.message);
+      if (e.status) {
+        setIsLoading(false);
+        throw e;
+      }
+      console.warn('Backend login request failed because the backend is unavailable. Falling back to frontend session mode:', e.message);
     }
     
     // Fallback if backend server is not running yet

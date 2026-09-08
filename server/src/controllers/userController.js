@@ -57,6 +57,7 @@ export const getUsers = async (req, res, next) => {
         username: true,
         email: true,
         role: true,
+        technicianType: true,
         zone: true,
         department: true,
         status: true,
@@ -73,13 +74,17 @@ export const getUsers = async (req, res, next) => {
 
 export const createUser = async (req, res, next) => {
   try {
-    const { name, email, role, zone, department } = req.body;
+    const { name, email, role, technicianType, zone, department } = req.body;
 
     if (!name || !email) {
       return res.status(400).json({
         success: false,
         message: 'Employee full name and email address are required.'
       });
+    }
+
+    if (role === 'ICT Technician' && !['Software Technician', 'Hardware Technician', 'Network Technician'].includes(technicianType)) {
+      return res.status(400).json({ success: false, message: 'Select a valid ICT Technician specialization.' });
     }
 
     // Check if user with email already exists
@@ -111,6 +116,7 @@ export const createUser = async (req, res, next) => {
         email,
         passwordHash,
         role: role || 'Department Staff/End User',
+        technicianType: role === 'ICT Technician' ? technicianType : null,
         zone: zone || 'Headquarters',
         department: department || 'General',
         status: 'Active'
@@ -121,6 +127,7 @@ export const createUser = async (req, res, next) => {
         username: true,
         email: true,
         role: true,
+        technicianType: true,
         zone: true,
         department: true,
         status: true,
@@ -173,7 +180,11 @@ export const createUser = async (req, res, next) => {
 export const updateUser = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, email, role, zone, department, status, username } = req.body;
+    const { name, email, role, technicianType, zone, department, status, username } = req.body;
+
+    if (role === 'ICT Technician' && !['Software Technician', 'Hardware Technician', 'Network Technician'].includes(technicianType)) {
+      return res.status(400).json({ success: false, message: 'Select a valid ICT Technician specialization.' });
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id },
@@ -182,6 +193,7 @@ export const updateUser = async (req, res, next) => {
         ...(email && { email }),
         ...(username && { username }),
         ...(role && { role }),
+        ...(role && { technicianType: role === 'ICT Technician' ? technicianType : null }),
         ...(zone !== undefined && { zone }),
         ...(department && { department }),
         ...(status && { status }),
@@ -192,6 +204,7 @@ export const updateUser = async (req, res, next) => {
         username: true,
         email: true,
         role: true,
+        technicianType: true,
         zone: true,
         department: true,
         status: true,
@@ -231,6 +244,7 @@ export const toggleUserStatus = async (req, res, next) => {
         username: true,
         email: true,
         role: true,
+        technicianType: true,
         zone: true,
         department: true,
         status: true

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../services/api';
+import { ipv4, required, firstError } from '../../utils/validation';
 import { Search, Server, Shield, Network, RefreshCw, X, Radio, AlertTriangle, Plus } from 'lucide-react';
 
 export const NetworkMonitoring = () => {
@@ -10,6 +11,7 @@ export const NetworkMonitoring = () => {
 
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [formError, setFormError] = useState('');
   const [activeForm, setActiveForm] = useState(null);
   const [newNode, setNewNode] = useState({
     name: '',
@@ -68,7 +70,17 @@ export const NetworkMonitoring = () => {
 
   const handleRegisterNode = async (e) => {
     e.preventDefault();
-    if (!newNode.name || !newNode.ipAddress) return;
+    setFormError('');
+    const validationError = firstError(
+      required(newNode.name, 'Device or node name'),
+      ipv4(newNode.ipAddress),
+      required(newNode.location, 'Location'),
+      required(newNode.zone, 'Zone')
+    );
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
 
     try {
       const payload = {
@@ -383,6 +395,7 @@ export const NetworkMonitoring = () => {
                 <button type="button" className="nav-btn" onClick={() => setActiveForm(null)} aria-label="Close drawer"><X size={18} /></button>
               </div>
               <div className="drawer-body">
+                {formError && <div className="badge badge-danger" style={{ display: 'block', padding: '0.75rem', marginBottom: '1rem', whiteSpace: 'normal' }}>{formError}</div>}
                 <div className="form-group">
                   <label htmlFor="node-name">Device / Node Name *</label>
                   <input

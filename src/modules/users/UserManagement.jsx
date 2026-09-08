@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../services/api';
+import { email, required, firstError } from '../../utils/validation';
 import { Plus, Search, X, CheckCircle, Mail, Key, User, Trash2 } from 'lucide-react';
 
 export const UserManagement = () => {
@@ -27,6 +28,7 @@ export const UserManagement = () => {
     username: '',
     email: '',
     role: 'Department Staff/End User',
+    technicianType: '',
     zone: '',
     status: 'Active'
   });
@@ -68,6 +70,7 @@ export const UserManagement = () => {
       username: '',
       email: '',
       role: 'Department Staff/End User',
+      technicianType: '',
       zone: '',
       status: 'Active'
     });
@@ -83,6 +86,7 @@ export const UserManagement = () => {
       username: u.username,
       email: u.email,
       role: u.role,
+      technicianType: u.technicianType || '',
       zone: u.zone || '',
       status: u.status
     });
@@ -92,13 +96,14 @@ export const UserManagement = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    if (!formState.name.trim() || !formState.email.trim()) {
-      setErrorMsg('Full employee name and official email address are required.');
-      return;
-    }
-
-    if (activeForm === 'register' && formState.role === 'Zonal ICT Focal Person' && !formState.zone) {
-      setErrorMsg('Select a geographic zone for a zonal ICT focal person.');
+    const validationError = firstError(
+      required(formState.name, 'Full employee name'),
+      email(formState.email, 'Official email address'),
+      formState.role === 'ICT Technician' ? required(formState.technicianType, 'Technician specialization') : '',
+      activeForm === 'register' && formState.role === 'Zonal ICT Focal Person' ? required(formState.zone, 'Geographic zone') : ''
+    );
+    if (validationError) {
+      setErrorMsg(validationError);
       return;
     }
 
@@ -111,6 +116,7 @@ export const UserManagement = () => {
           name: formState.name,
           email: formState.email,
           role: formState.role,
+          technicianType: formState.role === 'ICT Technician' ? formState.technicianType : null,
           zone: formState.role === 'Zonal ICT Focal Person' ? formState.zone : 'Headquarters',
           department: 'General'
         };
@@ -131,6 +137,7 @@ export const UserManagement = () => {
           username: formState.username,
           email: formState.email,
           role: formState.role,
+          technicianType: formState.role === 'ICT Technician' ? formState.technicianType : null,
           zone: formState.role === 'Zonal ICT Focal Person' ? formState.zone : 'Headquarters',
           status: formState.status
         };
@@ -424,6 +431,24 @@ export const UserManagement = () => {
                     ))}
                   </select>
                 </div>
+
+                {formState.role === 'ICT Technician' && (
+                  <div className="form-group animate-fade-in">
+                    <label htmlFor="usr-form-technician-type">Technician Specialization *</label>
+                    <select
+                      id="usr-form-technician-type"
+                      required
+                      className="input-field"
+                      value={formState.technicianType}
+                      onChange={(e) => setFormState(prev => ({ ...prev, technicianType: e.target.value }))}
+                    >
+                      <option value="">Select specialization...</option>
+                      <option value="Software Technician">Software Technician</option>
+                      <option value="Hardware Technician">Hardware Technician</option>
+                      <option value="Network Technician">Network Technician</option>
+                    </select>
+                  </div>
+                )}
 
                 {/* Conditional Zone selection for Zonal users */}
                 {formState.role === 'Zonal ICT Focal Person' && (

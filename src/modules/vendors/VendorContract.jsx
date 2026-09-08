@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Plus, Search, Handshake, Mail, Phone, Calendar, CheckSquare, X } from 'lucide-react';
+import { dateRange, email, required, firstError } from '../../utils/validation';
 
 export const VendorContract = () => {
   const { user, canEdit } = useAuth();
@@ -9,6 +10,7 @@ export const VendorContract = () => {
 
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [activeForm, setActiveForm] = useState(null);
+  const [formError, setFormError] = useState('');
 
   // Mock list of vendor contracts
   const [vendors, setVendors] = useState([
@@ -77,7 +79,18 @@ export const VendorContract = () => {
 
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
-    if (!newVendor.name || !newVendor.contactPerson) return;
+    setFormError('');
+    const validationError = firstError(
+      required(newVendor.name, 'Vendor name'),
+      required(newVendor.contactPerson, 'Contact person'),
+      email(newVendor.email, 'Contact email'),
+      required(newVendor.phone, 'Contact phone'),
+      dateRange(newVendor.contractStart, newVendor.contractEnd, 'Contract start date', 'Contract end date')
+    );
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
 
     const entry = {
       id: `ven-${vendors.length + 1}`,
@@ -287,6 +300,7 @@ export const VendorContract = () => {
                 <button type="button" className="nav-btn" onClick={() => setActiveForm(null)} aria-label="Close drawer"><X size={18} /></button>
               </div>
               <div className="drawer-body">
+                {formError && <div className="badge badge-danger" style={{ display: 'block', padding: '0.75rem', marginBottom: '1rem', whiteSpace: 'normal' }}>{formError}</div>}
                 <div className="form-group">
                   <label htmlFor="ven-form-name">Vendor Corporate Name *</label>
                   <input

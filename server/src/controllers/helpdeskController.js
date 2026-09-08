@@ -98,16 +98,31 @@ export const notifyAssignee = async (req, res, next) => {
 
 export const getTechnicians = async (req, res, next) => {
   try {
+    const activeTicketStatuses = ['Open', 'In Progress', 'Pending Vendor', 'Escalated'];
+    const category = (req.query.category || '').toLowerCase();
+    const technicianType = category.includes('software')
+      ? 'Software Technician'
+      : category.includes('hardware')
+        ? 'Hardware Technician'
+        : category.includes('network')
+          ? 'Network Technician'
+          : undefined;
+
     const technicians = await prisma.user.findMany({
-      where: { role: 'ICT Technician', status: 'Active' },
+      where: {
+        role: 'ICT Technician',
+        status: 'Active',
+        ...(technicianType && { technicianType })
+      },
       select: {
         id: true,
         name: true,
         username: true,
+        technicianType: true,
         _count: {
           select: {
             assignedTickets: {
-              where: { status: { notIn: ['Resolved', 'Closed'] } }
+              where: { status: { in: activeTicketStatuses } }
             }
           }
         }
@@ -121,6 +136,7 @@ export const getTechnicians = async (req, res, next) => {
         id: technician.id,
         name: technician.name,
         username: technician.username,
+        technicianType: technician.technicianType,
         assignedTaskCount: technician._count.assignedTickets
       }))
     });
@@ -144,6 +160,7 @@ export const getTicketById = async (req, res, next) => {
             username: true,
             email: true,
             role: true,
+            technicianType: true,
             zone: true,
             department: true
           }
@@ -155,6 +172,7 @@ export const getTicketById = async (req, res, next) => {
             username: true,
             email: true,
             role: true,
+            technicianType: true,
             zone: true,
             department: true
           }
@@ -375,6 +393,20 @@ export const updateTicketStatus = async (req, res, next) => {
         return res.status(400).json({
           success: false,
           message: 'Tickets can only be assigned to active ICT Technicians.'
+        });
+      }
+      const ticketCategory = (existingTicket.category || '').toLowerCase();
+      const requiredTechnicianType = ticketCategory.includes('software')
+        ? 'Software Technician'
+        : ticketCategory.includes('hardware')
+          ? 'Hardware Technician'
+          : ticketCategory.includes('network')
+            ? 'Network Technician'
+            : undefined;
+      if (requiredTechnicianType && userToAssign.technicianType !== requiredTechnicianType) {
+        return res.status(400).json({
+          success: false,
+          message: `${existingTicket.category} tickets can only be assigned to ${requiredTechnicianType}s.`
         });
       }
       // Check if assignment changed

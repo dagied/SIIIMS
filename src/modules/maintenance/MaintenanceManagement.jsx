@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../services/api';
+import { minLength, required, firstError } from '../../utils/validation';
 import { Plus, Wrench, CheckSquare, Calendar, Users, ShieldAlert, X } from 'lucide-react';
 
 export const MaintenanceManagement = () => {
@@ -13,6 +14,7 @@ export const MaintenanceManagement = () => {
   const [activeForm, setActiveForm] = useState(null);
   const [maintenanceList, setMaintenanceList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [formError, setFormError] = useState('');
 
   const fetchTasks = async () => {
     try {
@@ -71,7 +73,17 @@ export const MaintenanceManagement = () => {
 
   const handleScheduleSubmit = async (e) => {
     e.preventDefault();
-    if (!schedForm.title) return;
+    setFormError('');
+    const validationError = firstError(
+      required(schedForm.title, 'Maintenance task title'),
+      minLength(schedForm.title, 3, 'Maintenance task title'),
+      required(schedForm.date, 'Scheduled date'),
+      required(schedForm.checklistText, 'Maintenance checklist')
+    );
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
 
     try {
       const payload = {
@@ -95,7 +107,17 @@ export const MaintenanceManagement = () => {
 
   const handleCorrectiveSubmit = async (e) => {
     e.preventDefault();
-    if (!corrForm.title) return;
+    setFormError('');
+    const validationError = firstError(
+      required(corrForm.title, 'Corrective task title'),
+      minLength(corrForm.title, 3, 'Corrective task title'),
+      required(corrForm.date, 'Scheduled date'),
+      required(corrForm.remarks, 'Corrective work remarks')
+    );
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
 
     try {
       const payload = {
@@ -363,6 +385,7 @@ export const MaintenanceManagement = () => {
                 <button type="button" className="nav-btn" onClick={() => setActiveForm(null)} aria-label="Close drawer"><X size={18} /></button>
               </div>
               <div className="drawer-body">
+                {formError && <div className="badge badge-danger" style={{ display: 'block', padding: '0.75rem', marginBottom: '1rem', whiteSpace: 'normal' }}>{formError}</div>}
                 <div className="form-group">
                   <label htmlFor="sch-title">Maintenance Task Title *</label>
                   <input
@@ -465,6 +488,7 @@ export const MaintenanceManagement = () => {
                 <button type="button" className="nav-btn" onClick={() => setActiveForm(null)} aria-label="Close drawer"><X size={18} /></button>
               </div>
               <div className="drawer-body">
+                {formError && <div className="badge badge-danger" style={{ display: 'block', padding: '0.75rem', marginBottom: '1rem', whiteSpace: 'normal' }}>{formError}</div>}
                 <div className="form-group">
                   <label htmlFor="cor-title">Failure Issue / Resolution Title *</label>
                   <input

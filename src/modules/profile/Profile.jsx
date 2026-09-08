@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { KeyRound, Save, UserRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
+import { email as validateEmail, minLength, required, firstError } from '../../utils/validation';
 
 export const Profile = () => {
   const { user, updateUserSession } = useAuth();
@@ -15,8 +16,14 @@ export const Profile = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (newPassword && newPassword !== confirmPassword) {
-      setFeedback({ type: 'error', text: 'New passwords do not match.' });
+    const validationError = firstError(
+      required(name, 'Full name'),
+      validateEmail(email, 'Email address'),
+      newPassword ? minLength(newPassword, 8, 'New password') : '',
+      newPassword && newPassword !== confirmPassword ? 'New passwords do not match.' : ''
+    );
+    if (validationError) {
+      setFeedback({ type: 'error', text: validationError });
       return;
     }
 

@@ -8,17 +8,18 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  name         String
-  username     String   @unique
-  email        String   @unique
-  passwordHash String
-  role         String // System Admin, ICT Technician, Zonal ICT Focal Person, Department Staff/End User, Management/Executive Viewer
-  zone         String?
-  department   String?
-  status       String   @default("Active") // Active, Inactive, Suspended
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default(uuid())
+  name           String
+  username       String   @unique
+  email          String   @unique
+  passwordHash   String
+  role           String // System Admin, ICT Technician, Zonal ICT Focal Person, Department Staff/End User, Management/Executive Viewer
+  technicianType String? // Software Technician, Hardware Technician, Network Technician
+  zone           String?
+  department     String?
+  status         String   @default("Active") // Active, Inactive, Suspended
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   assignedTickets  HelpdeskTicket[]  @relation("AssignedTickets")
   requestedTickets HelpdeskTicket[]  @relation("RequestedTickets")

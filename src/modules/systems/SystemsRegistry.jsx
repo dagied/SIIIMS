@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../services/api';
+import { minLength, required, firstError } from '../../utils/validation';
 import { Plus, Search, ExternalLink, Globe, Database, Cpu, UserCheck, X } from 'lucide-react';
 
 export const SystemsRegistry = () => {
@@ -11,6 +12,7 @@ export const SystemsRegistry = () => {
   const [systems, setSystems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
+  const [formError, setFormError] = useState('');
 
   const fetchSystems = async () => {
     try {
@@ -117,7 +119,18 @@ export const SystemsRegistry = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    if (!formState.name || !formState.owner) return;
+    setFormError('');
+    const validationError = firstError(
+      required(formState.name, 'System name'),
+      minLength(formState.name, 2, 'System name'),
+      required(formState.owner, 'Owner department'),
+      required(formState.hosting, 'Hosting model'),
+      required(formState.techStack, 'Technology stack')
+    );
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
 
     try {
       if (activeForm === 'register') {
@@ -369,6 +382,7 @@ export const SystemsRegistry = () => {
                 <button type="button" className="nav-btn" onClick={() => setActiveForm(null)} aria-label="Close drawer"><X size={18} /></button>
               </div>
               <div className="drawer-body">
+                {formError && <div className="badge badge-danger" style={{ display: 'block', padding: '0.75rem', marginBottom: '1rem', whiteSpace: 'normal' }}>{formError}</div>}
                 <div className="form-group">
                   <label htmlFor="sys-name">Application / System Name *</label>
                   <input

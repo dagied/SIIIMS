@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../services/api';
+import { positiveNumber, required, firstError } from '../../utils/validation';
 import { ShieldAlert, Search, Plus, Calendar, AlertTriangle, X } from 'lucide-react';
 
 export const LicenseWarranty = () => {
@@ -12,6 +13,7 @@ export const LicenseWarranty = () => {
   const [activeForm, setActiveForm] = useState(null);
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [formError, setFormError] = useState('');
 
   const fetchLicenses = async () => {
     try {
@@ -77,7 +79,18 @@ export const LicenseWarranty = () => {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (!newContract.name || !newContract.expiryDate) return;
+    setFormError('');
+    const validationError = firstError(
+      required(newContract.name, 'Software or asset name'),
+      required(newContract.vendorName, 'Vendor name'),
+      required(newContract.serialOrKey, 'License key or serial number'),
+      required(newContract.expiryDate, 'Expiry date'),
+      positiveNumber(newContract.totalSeats, 'Total seats')
+    );
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
 
     try {
       const payload = {
@@ -317,6 +330,7 @@ export const LicenseWarranty = () => {
                 <button type="button" className="nav-btn" onClick={() => setActiveForm(null)} aria-label="Close drawer"><X size={18} /></button>
               </div>
               <div className="drawer-body">
+                {formError && <div className="badge badge-danger" style={{ display: 'block', padding: '0.75rem', marginBottom: '1rem', whiteSpace: 'normal' }}>{formError}</div>}
                 <div className="form-group">
                   <label htmlFor="con-name">Asset / software Title Name *</label>
                   <input

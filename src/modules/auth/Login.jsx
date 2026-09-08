@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { LogIn, HelpCircle } from 'lucide-react';
+import { required, minLength, firstError } from '../../utils/validation';
 
 export const Login = () => {
   const { login, isLoading } = useAuth();
@@ -16,17 +17,18 @@ export const Login = () => {
     e.preventDefault();
     setError('');
 
-    if (!username.trim()) {
-      setError('Username is required');
-      return;
-    }
-    if (!password.trim()) {
-      setError('Password is required');
+    const validationError = firstError(
+      required(username, 'Username'),
+      required(password, 'Password'),
+      minLength(password, 8, 'Password')
+    );
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     try {
-      const loggedIn = await login(role, username, password);
+      const loggedIn = await login('', username, password);
       if (!loggedIn) {
         setError('Authentication failed. Please check your credentials.');
       }
@@ -97,23 +99,6 @@ export const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               disabled={isLoading}
             />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="role-select">{t('role')}</label>
-            <select
-              id="role-select"
-              className="input-field"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              disabled={isLoading}
-            >
-              {roleList.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
           </div>
 
           <button

@@ -24,7 +24,9 @@ async function request(endpoint, options = {}) {
         localStorage.removeItem('siims_auth');
         window.dispatchEvent(new CustomEvent('siims:auth-expired'));
       }
-      throw new Error(data.message || `Request failed with status ${response.status}`);
+      const error = new Error(data.message || `Request failed with status ${response.status}`);
+      error.status = response.status;
+      throw error;
     }
 
     return data;
@@ -62,7 +64,7 @@ export const api = {
 
   // Helpdesk Tickets
   getTickets: () => request('/helpdesk'),
-  getHelpdeskTechnicians: () => request('/helpdesk/technicians'),
+  getHelpdeskTechnicians: (category = '') => request(`/helpdesk/technicians${category ? `?category=${encodeURIComponent(category)}` : ''}`),
   notifyTicketAssignee: (id, message) => request(`/helpdesk/${id}/notify`, {
     method: 'POST',
     body: JSON.stringify({ message })

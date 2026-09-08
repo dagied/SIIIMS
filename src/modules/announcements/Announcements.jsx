@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Megaphone, Send } from 'lucide-react';
 import { api } from '../../services/api';
+import { minLength, required, firstError } from '../../utils/validation';
 
 export const Announcements = () => {
   const [title, setTitle] = useState('');
@@ -10,8 +11,14 @@ export const Announcements = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!title.trim() || !message.trim()) {
-      setFeedback({ type: 'error', text: 'Announcement title and body are required.' });
+    const validationError = firstError(
+      required(title, 'Announcement title'),
+      minLength(title, 3, 'Announcement title'),
+      required(message, 'Announcement body'),
+      minLength(message, 10, 'Announcement body')
+    );
+    if (validationError) {
+      setFeedback({ type: 'error', text: validationError });
       return;
     }
 

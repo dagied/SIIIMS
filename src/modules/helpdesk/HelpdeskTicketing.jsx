@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../services/api';
+import { minLength, required, firstError } from '../../utils/validation';
 import { Plus, Search, X } from 'lucide-react';
 
 export const HelpdeskTicketing = () => {
@@ -56,6 +57,7 @@ export const HelpdeskTicketing = () => {
         priority: t.priority || 'Medium',
         status: t.status || 'Open',
         assignedTo: t.assignee?.name || t.assignedTo || 'Unassigned',
+        assignedToId: t.assignee?.id || t.assigneeId || '',
         createdBy: t.requester?.name || t.createdBy || 'End User',
         date: t.createdAt ? new Date(t.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         description: t.description || '',
@@ -88,6 +90,16 @@ export const HelpdeskTicketing = () => {
     }
   }, []);
 
+  const loadTechniciansForTicket = async (ticket) => {
+    try {
+      const res = await api.getHelpdeskTechnicians(ticket?.category || '');
+      setTechnicians(Array.isArray(res?.data) ? res.data : []);
+    } catch (err) {
+      setError(err.message || 'Failed to load technicians.');
+      setTechnicians([]);
+    }
+  };
+
   const filteredTickets = tickets.filter(ticket => {
     const matchesSearch = 
       (ticket.subject && ticket.subject.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -103,8 +115,14 @@ export const HelpdeskTicketing = () => {
   const handleSubmitTicket = async (e) => {
     e.preventDefault();
     
-    if (!newTicket.subject || !newTicket.description) {
-      setError('Please fill in all required fields');
+    const validationError = firstError(
+      required(newTicket.subject, 'Ticket subject'),
+      minLength(newTicket.subject, 3, 'Ticket subject'),
+      required(newTicket.description, 'Issue details'),
+      minLength(newTicket.description, 10, 'Issue details')
+    );
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -148,7 +166,7 @@ export const HelpdeskTicketing = () => {
 
   // FIXED: Updated to use the correct API method
 // In HelpdeskTicketing component
-const handleEscalateSubmit = async (e) => {
+  const handleEscalateSubmit = async (e) => {
   e.preventDefault();
   
   if (!selectedTicket) {
@@ -156,8 +174,11 @@ const handleEscalateSubmit = async (e) => {
     return;
   }
   
-  if (isSystemAdmin && !escTarget.technician) {
-    setError('Please select a technician');
+  const validationError = isSystemAdmin
+    ? required(escTarget.technician, 'Technician')
+    : required(escTarget.status, 'Ticket status');
+  if (validationError) {
+    setError(validationError);
     return;
   }
 
@@ -167,13 +188,13 @@ const handleEscalateSubmit = async (e) => {
     
     // FIXED: Send the payload with the technician name
     const payload = {
-      note: escTarget.escalationReason || `Ticket assigned to ${escTarget.technician}`,
+      note: escTarget.escalationReason || 'Ticket assignment updated',
       priority: selectedTicket.priority,
       category: selectedTicket.category,
     };
 
     if (isSystemAdmin) {
-      payload.assignedTo = escTarget.technician;
+      payload.assigneeId = escTarget.technician;
     } else {
       payload.status = escTarget.status;
     }
@@ -241,6 +262,19 @@ const handleEscalateSubmit = async (e) => {
 
   const isTechnician = user?.role === 'ICT Technician';
   const isSystemAdmin = user?.role === 'System Admin';
+  const technicianTypeByCategory = (category = '') => {
+    const normalizedCategory = category.toLowerCase();
+    return normalizedCategory.includes('software')
+      ? 'Software Technician'
+      : normalizedCategory.includes('hardware')
+        ? 'Hardware Technician'
+        : normalizedCategory.includes('network')
+          ? 'Network Technician'
+          : null;
+  };
+  const matchingTechnicians = selectedTicket
+    ? technicians.filter(technician => technician.technicianType === technicianTypeByCategory(selectedTicket.category))
+    : technicians;
 
   const openNotifyDialog = (ticket) => {
     setNotifyTarget(ticket);
@@ -532,9 +566,10 @@ const handleEscalateSubmit = async (e) => {
                               setActiveForm('escalate'); 
                               setError(null);
                               setSuccessMessage(null);
+                              loadTechniciansForTicket(tkt);
                               setEscTarget(prev => ({
                                 ...prev,
-                                technician: tkt.assignedTo !== 'Unassigned' ? tkt.assignedTo : '',
+                                technician: tkt.assignedToId || '',
                                 status: tkt.status
                               }));
                             }}
@@ -559,9 +594,10 @@ const handleEscalateSubmit = async (e) => {
                             setActiveForm('escalate');
                             setError(null);
                             setSuccessMessage(null);
+                            loadTechniciansForTicket(tkt);
                             setEscTarget(prev => ({
                               ...prev,
-                              technician: tkt.assignedTo !== 'Unassigned' ? tkt.assignedTo : '',
+                              technician: tkt.assignedToId || '',
                               status: tkt.status
                             }));
                           }}
@@ -909,8 +945,8 @@ const handleEscalateSubmit = async (e) => {
                     style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}
                   >
                     <option value="">Select ICT Technician...</option>
-                    {technicians.map((technician) => (
-                      <option key={technician.id} value={technician.name}>
+                    {matchingTechnicians.map((technician) => (
+                      <option key={technician.id} value={technician.id}>
                         {technician.name} ({technician.assignedTaskCount} unresolved)
                       </option>
                     ))}
