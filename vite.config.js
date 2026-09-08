@@ -16,4 +16,6 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
   },
+  // Important for Render
+  base: '/',
 });
