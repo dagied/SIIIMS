@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../services/api';
 import { minLength, positiveNumber, required, firstError } from '../../utils/validation';
-import { Plus, Search, ArrowLeftRight, Trash2, Eye, X } from 'lucide-react';
+import { Plus, Search, ArrowLeftRight, RefreshCw, Trash2, Eye, X } from 'lucide-react';
 
 export const AssetManagement = () => {
   const { user, canEdit } = useAuth();
@@ -183,6 +183,22 @@ export const AssetManagement = () => {
     setTransferTarget({ location: '', owner: '', notes: '' });
   };
 
+  const handleToggleAssetStatus = async (asset) => {
+    const nextStatus = asset.status === 'In Store' ? 'In Use' : 'In Store';
+
+    try {
+      setFormError('');
+      const res = await api.updateAsset(asset.id, { status: nextStatus });
+      if (!res?.success) {
+        throw new Error(res?.message || 'Failed to update asset status.');
+      }
+      await fetchAssets();
+    } catch (err) {
+      console.error('[AssetManagement] Failed to update asset status:', err);
+      setFormError(err.message || 'Failed to update asset status.');
+    }
+  };
+
   const handleDisposeSubmit = (e) => {
     e.preventDefault();
     const validationError = firstError(
@@ -285,6 +301,8 @@ export const AssetManagement = () => {
               aria-label="Status Filter"
             >
               <option value="">{t('all')} Statuses</option>
+              <option value="In Store">In Store</option>
+              <option value="In Use">In Use</option>
               <option value="Active">Active</option>
               <option value="Transferred">Transferred</option>
               <option value="Disposed">Disposed</option>
@@ -332,8 +350,8 @@ export const AssetManagement = () => {
                   <td>{asset.category}</td>
                   <td>
                     <span className={`badge ${
-                      asset.status === 'Active' ? 'badge-success' : 
-                      asset.status === 'Transferred' ? 'badge-warning' : 'badge-danger'
+                      asset.status === 'In Use' || asset.status === 'Active' ? 'badge-success' :
+                      asset.status === 'In Store' || asset.status === 'Transferred' ? 'badge-warning' : 'badge-danger'
                     }`}>
                       {asset.status}
                     </span>
@@ -362,6 +380,17 @@ export const AssetManagement = () => {
                           >
                             <ArrowLeftRight size={14} style={{ color: 'var(--secondary)' }} />
                           </button>
+                          {(asset.status === 'In Store' || asset.status === 'In Use') && (
+                            <button
+                              className="btn btn-secondary"
+                              style={{ padding: '4px 8px', borderColor: 'var(--primary)' }}
+                              onClick={() => handleToggleAssetStatus(asset)}
+                              title={`Move asset ${asset.status === 'In Store' ? 'to use' : 'to store'}`}
+                              aria-label={`Move ${asset.name} ${asset.status === 'In Store' ? 'to use' : 'to store'}`}
+                            >
+                              <RefreshCw size={14} style={{ color: 'var(--primary)' }} />
+                            </button>
+                          )}
                           <button 
                             className="btn btn-secondary" 
                             style={{ padding: '4px 8px', borderColor: 'var(--status-danger)' }}
